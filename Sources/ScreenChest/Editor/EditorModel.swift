@@ -2,6 +2,11 @@ import AVFoundation
 import Observation
 import SwiftUI
 
+enum TimelineEdge {
+    case leading
+    case trailing
+}
+
 @MainActor
 @Observable
 final class EditorModel {
@@ -43,7 +48,8 @@ final class EditorModel {
 
     init(packageURL: URL) throws {
         self.packageURL = packageURL
-        let project = try ProjectStore.load(from: packageURL)
+        var project = try ProjectStore.load(from: packageURL)
+        project.edits.clampTrim(to: project.recording.duration)
         self.project = project
         mouse = ProjectStore.loadMouseTrack(from: packageURL, fileName: project.recording.mouseFile)
     }
@@ -51,6 +57,7 @@ final class EditorModel {
     var edits: Edits { project.edits }
     var duration: Double { project.recording.duration }
     var hasCamera: Bool { project.recording.cameraFile != nil }
+    var usesNoBackground: Bool { BackgroundPreset.named(edits.backgroundPresetID).isNone }
     var hasMicrophone: Bool { project.recording.audioTracks.contains(.microphone) }
     var hasSystemAudio: Bool { project.recording.audioTracks.contains(.systemAudio) }
     var isExporting: Bool { if case .exporting = exportState { true } else { false } }
@@ -109,11 +116,14 @@ final class EditorModel {
         applyEdits()
     }
 
+    var trimmedDuration: Double { edits.trimEnd - edits.trimStart }
+    var trimmedCurrentTime: Double { currentTime - edits.trimStart }
+
     func togglePlayback() {
         if isPlaying {
             player.pause()
         } else {
-            if currentTime >= edits.trimEnd - 0.01 || currentTime < edits.trimStart {
+            if currentTime >= edits.trimEnd - 0.01 {
                 seek(to: edits.trimStart)
             }
             player.play()
@@ -121,7 +131,7 @@ final class EditorModel {
     }
 
     func seek(to seconds: Double) {
-        let clamped = min(max(0, seconds), duration)
+        let clamped = min(max(edits.trimStart, seconds), edits.trimEnd)
         currentTime = clamped
         player.seek(to: CMTime(seconds: clamped, preferredTimescale: 600), toleranceBefore: .zero, toleranceAfter: .zero)
     }
@@ -130,16 +140,21 @@ final class EditorModel {
         update { edits in
             edits.trimStart = min(max(0, seconds), edits.trimEnd - EditorModel.minimumTrimLength)
         }
+        seek(to: edits.trimStart)
     }
 
     func setTrimEnd(_ seconds: Double) {
         update { edits in
             edits.trimEnd = max(min(duration, seconds), edits.trimStart + EditorModel.minimumTrimLength)
         }
+        seek(to: edits.trimEnd)
     }
 
     func addZoomAtPlayhead() {
-        let time = currentTime
+        addZoom(at: currentTime)
+    }
+
+    func addZoom(at time: Double) {
         if let existing = edits.zooms.first(where: { $0.contains(time) }) {
             selectedZoomID = existing.id
             return
@@ -162,8 +177,30 @@ final class EditorModel {
 
     func deleteSelectedZoom() {
         guard let id = selectedZoomID else { return }
+        deleteZoom(id: id)
+    }
+
+    func deleteZoom(id: UUID) {
         update { $0.zooms.removeAll { $0.id == id } }
-        selectedZoomID = nil
+        if selectedZoomID == id {
+            selectedZoomID = nil
+        }
+    }
+
+    func resizeZoom(id: UUID, edge: TimelineEdge, to time: Double) {
+        update { edits in
+            guard let index = edits.zooms.firstIndex(where: { $0.id == id }) else { return }
+            let segment = edits.zooms[index]
+            let others = edits.zooms.filter { $0.id != id }
+            switch edge {
+            case .leading:
+                let lower = others.filter { $0.end <= segment.start }.map(\.end).max() ?? 0
+                edits.zooms[index].start = min(max(time, lower), segment.end - EditorModel.minimumZoomDuration)
+            case .trailing:
+                let upper = others.filter { $0.start >= segment.end }.map(\.start).min() ?? duration
+                edits.zooms[index].end = max(min(time, upper), segment.start + EditorModel.minimumZoomDuration)
+            }
+        }
     }
 
     func regenerateZooms() {
@@ -306,6 +343,10 @@ final class EditorModel {
 
     private func playerDidAdvance(to seconds: Double) {
         guard seconds.isFinite else { return }
+        if seconds < edits.trimStart {
+            seek(to: edits.trimStart)
+            return
+        }
         currentTime = seconds
         if isPlaying, seconds >= edits.trimEnd - 0.001 {
             player.pause()

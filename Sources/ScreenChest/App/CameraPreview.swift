@@ -17,6 +17,7 @@ struct CameraPreview: NSViewRepresentable {
 
     func updateNSView(_ view: NSView, context: Context) {
         guard let layer = view.layer as? AVCaptureVideoPreviewLayer else { return }
+        if layer.session !== session { layer.session = session }
         mirror(layer)
     }
 

@@ -54,30 +54,12 @@ struct EditorControlSections: View {
 
     private var backgroundSection: some View {
         Section("Background") {
-            HStack(spacing: 8) {
-                ForEach(BackgroundPreset.all) { preset in
-                    Button {
-                        model.update { $0.backgroundPresetID = preset.id }
-                    } label: {
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(LinearGradient(
-                                colors: [preset.top.color, preset.bottom.color],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ))
-                            .frame(width: 34, height: 26)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .strokeBorder(model.edits.backgroundPresetID == preset.id ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: 2)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .help(preset.name)
-                }
+            BackgroundPicker(model: model)
+            if !model.usesNoBackground {
+                LabeledSlider(title: "Padding", value: model.binding(\.padding), range: 0...0.16, format: { String(format: "%.0f%%", $0 * 100) })
+                LabeledSlider(title: "Corners", value: model.binding(\.cornerRadius), range: 0...0.08, format: { String(format: "%.0f%%", $0 * 100) })
+                Toggle("Shadow", isOn: model.binding(\.shadow))
             }
-            LabeledSlider(title: "Padding", value: model.binding(\.padding), range: 0...0.16, format: { String(format: "%.0f%%", $0 * 100) })
-            LabeledSlider(title: "Corners", value: model.binding(\.cornerRadius), range: 0...0.08, format: { String(format: "%.0f%%", $0 * 100) })
-            Toggle("Shadow", isOn: model.binding(\.shadow))
         }
     }
 
@@ -165,6 +147,116 @@ struct EditorControlSections: View {
     }
 }
 
+private enum BackgroundTab: String, CaseIterable, Identifiable {
+    case gradients = "Gradients"
+    case wallpapers = "macOS"
+
+    var id: String { rawValue }
+
+    var presets: [BackgroundPreset] {
+        switch self {
+        case .gradients: BackgroundPreset.gradients
+        case .wallpapers: BackgroundLibrary.wallpapers
+        }
+    }
+
+    static func containing(_ presetID: String) -> BackgroundTab {
+        allCases.first { $0.presets.contains { $0.id == presetID } } ?? .gradients
+    }
+}
+
+private struct BackgroundPicker: View {
+    static let swatchSize = CGSize(width: 62, height: 40)
+
+    let model: EditorModel
+    @State private var tab: BackgroundTab
+
+    init(model: EditorModel) {
+        self.model = model
+        _tab = State(initialValue: BackgroundTab.containing(model.edits.backgroundPresetID))
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !BackgroundLibrary.wallpapers.isEmpty {
+                Picker("Background type", selection: $tab) {
+                    ForEach(BackgroundTab.allCases) { tab in
+                        Text(tab.rawValue).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: BackgroundPicker.swatchSize.width), spacing: 8)], spacing: 8) {
+                ForEach([BackgroundPreset.none] + tab.presets) { preset in
+                    BackgroundSwatch(preset: preset, isSelected: model.edits.backgroundPresetID == preset.id) {
+                        model.update { $0.backgroundPresetID = preset.id }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct BackgroundSwatch: View {
+    let preset: BackgroundPreset
+    let isSelected: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
+            Group {
+                if preset.isNone {
+                    Image(systemName: "circle.slash")
+                        .font(.title3)
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.secondary.opacity(0.12))
+                } else if let thumbnail = BackgroundThumbnails.shared.image(for: preset) {
+                    Image(decorative: thumbnail, scale: BackgroundThumbnails.scale)
+                        .resizable()
+                        .scaledToFill()
+                } else {
+                    Color.secondary.opacity(0.2)
+                }
+            }
+            .frame(width: BackgroundPicker.swatchSize.width, height: BackgroundPicker.swatchSize.height)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.15), lineWidth: isSelected ? 2 : 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .help(preset.name)
+        .accessibilityLabel(preset.name)
+    }
+}
+
+@MainActor
+@Observable
+private final class BackgroundThumbnails {
+    static let shared = BackgroundThumbnails()
+    static let scale: CGFloat = 2
+
+    private(set) var images: [String: CGImage] = [:]
+    @ObservationIgnored private var requested: Set<String> = []
+
+    func image(for preset: BackgroundPreset) -> CGImage? {
+        if let image = images[preset.id] { return image }
+        guard !requested.contains(preset.id) else { return nil }
+        requested.insert(preset.id)
+        let pixelSize = CGSize(width: BackgroundPicker.swatchSize.width * BackgroundThumbnails.scale, height: BackgroundPicker.swatchSize.height * BackgroundThumbnails.scale)
+        Task.detached(priority: .utility) {
+            let image = BackgroundPainter.render(preset, size: pixelSize)
+            await MainActor.run {
+                if let image { self.images[preset.id] = image }
+            }
+        }
+        return nil
+    }
+}
+
 private struct LabeledSlider: View {
     let title: String
     @Binding var value: Double
@@ -183,8 +275,4 @@ private struct LabeledSlider: View {
             Slider(value: $value, in: range)
         }
     }
-}
-
-extension RGB {
-    var color: Color { Color(red: r, green: g, blue: b) }
 }

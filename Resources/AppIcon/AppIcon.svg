@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="smoke" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#231C2E"/>
+      <stop offset="1" stop-color="#0C0A12"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF9A3D"/>
+      <stop offset="0.45" stop-color="#FF3D9A"/>
+      <stop offset="1" stop-color="#6D3DFF"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.34"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.11"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.07"/>
+    </linearGradient>
+    <linearGradient id="glassEdge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.9"/>
+      <stop offset="0.5" stop-color="#FFFFFF" stop-opacity="0.3"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.65"/>
+    </linearGradient>
+    <linearGradient id="chest" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FF6FB1"/>
+      <stop offset="0.5" stop-color="#9B5CFF"/>
+      <stop offset="1" stop-color="#3D8BFF"/>
+    </linearGradient>
+    <radialGradient id="bloom" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#B57CFF" stop-opacity="0.6"/>
+      <stop offset="0.55" stop-color="#8A5CFF" stop-opacity="0.24"/>
+      <stop offset="1" stop-color="#6D3DFF" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="recGlow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#FF5A5A" stop-opacity="0.8"/>
+      <stop offset="1" stop-color="#FF3B3B" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="tileClip">
+      <rect x="100" y="100" width="824" height="824" rx="186"/>
+    </clipPath>
+  </defs>
+
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="none" stroke="url(#rim)" stroke-width="56" opacity="0.14"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="none" stroke="url(#rim)" stroke-width="30" opacity="0.28"/>
+  <rect x="100" y="100" width="824" height="824" rx="186" fill="none" stroke="url(#rim)" stroke-width="14" opacity="0.55"/>
+
+  <g clip-path="url(#tileClip)">
+    <rect x="100" y="100" width="824" height="824" fill="url(#smoke)"/>
+
+    <ellipse cx="512" cy="600" rx="420" ry="330" fill="url(#bloom)"/>
+
+    <g fill="none" stroke="url(#chest)" stroke-linejoin="round">
+      <g opacity="0.10" stroke-width="100">
+        <path d="M272 520 V500 Q272 380 392 380 H632 Q752 380 752 500 V520 Z"/>
+        <rect x="272" y="556" width="480" height="250" rx="52"/>
+      </g>
+      <g opacity="0.22" stroke-width="50">
+        <path d="M272 520 V500 Q272 380 392 380 H632 Q752 380 752 500 V520 Z"/>
+        <rect x="272" y="556" width="480" height="250" rx="52"/>
+      </g>
+    </g>
+    <g fill="url(#chest)">
+      <path d="M272 520 V500 Q272 380 392 380 H632 Q752 380 752 500 V520 Z"/>
+      <rect x="272" y="556" width="480" height="250" rx="52"/>
+    </g>
+    <g fill="#0E0B14" opacity="0.55">
+      <rect x="362" y="380" width="22" height="426"/>
+      <rect x="640" y="380" width="22" height="426"/>
+    </g>
+    <rect x="472" y="520" width="80" height="104" rx="24" fill="#0E0B14" opacity="0.9"/>
+    <rect x="472" y="520" width="80" height="104" rx="24" fill="none" stroke="#FFFFFF" stroke-opacity="0.4" stroke-width="4"/>
+    <circle cx="512" cy="562" r="12" fill="url(#chest)"/>
+    <path d="M330 420 Q460 386 690 404" stroke="#FFFFFF" stroke-opacity="0.55" stroke-width="14" stroke-linecap="round" fill="none"/>
+
+    <circle cx="214" cy="214" r="80" fill="url(#recGlow)"/>
+    <circle cx="214" cy="214" r="24" fill="#FF3B3B"/>
+    <circle cx="207" cy="207" r="8" fill="#FFFFFF" opacity="0.55"/>
+
+    <rect x="100" y="100" width="824" height="824" fill="url(#glass)"/>
+    <g stroke="#FFFFFF" stroke-opacity="0.045" stroke-width="2">
+      <path d="M150 100 V924 M200 100 V924 M250 100 V924 M300 100 V924 M350 100 V924 M400 100 V924 M450 100 V924 M500 100 V924 M550 100 V924 M600 100 V924 M650 100 V924 M700 100 V924 M750 100 V924 M800 100 V924 M850 100 V924 M900 100 V924"/>
+    </g>
+  </g>
+  <rect x="103" y="103" width="818" height="818" rx="184" fill="none" stroke="url(#glassEdge)" stroke-width="5"/>
+  <path d="M190 150 Q290 106 430 108" stroke="#FFFFFF" stroke-opacity="0.75" stroke-width="12" stroke-linecap="round" fill="none"/>
+</svg>

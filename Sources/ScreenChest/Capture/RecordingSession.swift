@@ -117,7 +117,7 @@ final class RecordingSession: @unchecked Sendable {
         try await stream.start()
     }
 
-    func stop() async throws -> Project {
+    func stop(cameraCorner: CameraStyle.Corner = .bottomRight) async throws -> Project {
         let stopTime = CMClockGetTime(CMClockGetHostTimeClock())
         if let stream {
             try? await stream.stop()
@@ -176,7 +176,7 @@ final class RecordingSession: @unchecked Sendable {
                 duration: duration,
                 sourceName: configuration.target?.title ?? configuration.camera?.localizedName ?? "Camera"
             ),
-            edits: .initial(duration: duration, zooms: zooms, hasCamera: cameraFile != nil)
+            edits: .initial(duration: duration, zooms: zooms, hasCamera: cameraFile != nil, cameraCorner: cameraCorner)
         )
         try ProjectStore.save(project, to: packageURL)
         return project

@@ -20,6 +20,7 @@ final class FrameRenderer {
     private let colorSpace = CGColorSpace(name: CGColorSpace.sRGB)!
     private var cachedStaticKey: StaticLayerKey?
     private var cachedStaticLayer: CIImage?
+    private var cachedBackground: (presetID: String, size: CGSize, image: CIImage)?
 
     func render(screen: CVPixelBuffer?, camera: CVPixelBuffer?, time: Double, plan: RenderPlan, into output: CVPixelBuffer) {
         var image = staticLayer(for: plan)
@@ -50,12 +51,14 @@ final class FrameRenderer {
     }
 
     private func backgroundLayer(for plan: RenderPlan) -> CIImage {
-        let gradient = CIFilter.linearGradient()
-        gradient.point0 = CGPoint(x: 0, y: plan.canvasSize.height)
-        gradient.point1 = CGPoint(x: plan.canvasSize.width, y: 0)
-        gradient.color0 = color(plan.background.top)
-        gradient.color1 = color(plan.background.bottom)
-        return (gradient.outputImage ?? CIImage(color: color(plan.background.bottom))).cropped(to: plan.canvasRect)
+        if let cachedBackground, cachedBackground.presetID == plan.background.id, cachedBackground.size == plan.canvasSize {
+            return cachedBackground.image
+        }
+        let painted = BackgroundPainter.render(plan.background, size: plan.canvasSize).map { CIImage(cgImage: $0) }
+            ?? CIImage(color: color(BackgroundPainter.fallbackColor))
+        let image = painted.cropped(to: plan.canvasRect)
+        cachedBackground = (plan.background.id, plan.canvasSize, image)
+        return image
     }
 
     private func shadow(for rect: CGRect, cornerRadius: CGFloat, plan: RenderPlan) -> CIImage {

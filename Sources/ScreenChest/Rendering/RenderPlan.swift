@@ -49,11 +49,14 @@ struct RenderPlan {
 
     static func make(project: Project, mouse: MouseTrack, canvasSize: CGSize, hasCamera: Bool) -> RenderPlan {
         let edits = project.edits
+        let background = BackgroundPreset.named(edits.backgroundPresetID)
         let source = project.recording.pixelSize
         let minimumDimension = min(canvasSize.width, canvasSize.height)
-        let padding = minimumDimension * edits.padding
+        let padding = background.isNone ? 0 : minimumDimension * edits.padding
         let available = CGSize(width: max(1, canvasSize.width - padding * 2), height: max(1, canvasSize.height - padding * 2))
-        let fit = min(available.width / source.width, available.height / source.height)
+        let fit = background.isNone
+            ? max(available.width / source.width, available.height / source.height)
+            : min(available.width / source.width, available.height / source.height)
         let contentSize = CGSize(width: source.width * fit, height: source.height * fit)
         let contentRect = CGRect(
             x: (canvasSize.width - contentSize.width) / 2,
@@ -74,9 +77,9 @@ struct RenderPlan {
         return RenderPlan(
             canvasSize: canvasSize,
             sourceSize: source,
-            cornerRadius: minimumDimension * edits.cornerRadius,
-            shadow: edits.shadow,
-            background: BackgroundPreset.named(edits.backgroundPresetID),
+            cornerRadius: background.isNone ? 0 : minimumDimension * edits.cornerRadius,
+            shadow: edits.shadow && !background.isNone,
+            background: background,
             camera: edits.camera,
             contentRect: contentRect,
             cameraRect: cameraRect,

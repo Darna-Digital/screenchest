@@ -34,6 +34,23 @@ final class ProjectStoreTests: XCTestCase {
         XCTAssertEqual(ProjectStore.loadMouseTrack(from: packageURL, fileName: "missing.json"), .empty)
     }
 
+    func testEditsDecodeWithoutTrimKeys() throws {
+        let json = """
+        {"backgroundPresetID":"ocean","camera":{"corner":"bottomRight","enabled":false,"mirrored":true,"shape":"circle","size":0.22},
+         "cornerRadius":0.02,"microphoneVolume":1,"output":{"codec":"h264","resolution":"source"},"padding":0.06,"shadow":true,
+         "systemAudioVolume":1,"zooms":[],"clips":[{"id":"5AE554C6-08F9-432A-8590-262B1BFD9579","start":1.5,"end":8}]}
+        """
+        var edits = try JSONDecoder().decode(Edits.self, from: Data(json.utf8))
+        XCTAssertEqual(edits.trimStart, 1.5)
+        XCTAssertEqual(edits.trimEnd, 8)
+
+        let bare = json.replacingOccurrences(of: ",\"clips\":[{\"id\":\"5AE554C6-08F9-432A-8590-262B1BFD9579\",\"start\":1.5,\"end\":8}]", with: "")
+        edits = try JSONDecoder().decode(Edits.self, from: Data(bare.utf8))
+        edits.clampTrim(to: 12)
+        XCTAssertEqual(edits.trimStart, 0)
+        XCTAssertEqual(edits.trimEnd, 12)
+    }
+
     func testTimeFormatting() {
         XCTAssertEqual(TimeFormatting.clock(65), "01:05")
         XCTAssertEqual(TimeFormatting.precise(65.26), "01:05.3")

@@ -47,7 +47,11 @@ final class StudioLibrary {
     var selection: URL?
 
     var current: LibraryRecording? {
-        recordings.first { $0.url == selection }
+        selection.flatMap(recording(at:))
+    }
+
+    func recording(at url: URL) -> LibraryRecording? {
+        recordings.first { $0.url.standardizedFileURL.path == url.standardizedFileURL.path }
     }
 
     var groups: [LibraryGroup] {
@@ -65,14 +69,12 @@ final class StudioLibrary {
                 return LibraryRecording(url: url, name: project.name, createdAt: project.createdAt, duration: project.recording.duration)
             }
             .sorted { $0.createdAt > $1.createdAt }
-        if let selection, !recordings.contains(where: { $0.url == selection }) {
-            self.selection = nil
-        }
+        selection = selection.flatMap(recording(at:))?.url ?? recordings.first?.url
     }
 
     func open(_ url: URL) {
         refresh()
-        selection = url
+        selection = recording(at: url)?.url ?? url
     }
 
     func moveToTrash(_ url: URL) {

@@ -43,6 +43,7 @@ final class RecorderController {
     private(set) var session: RecordingSession?
     private(set) var previewCapture: DeviceCapture?
 
+    @ObservationIgnored weak var cameraBubbleWindow: NSWindow?
     @ObservationIgnored private var ownApplications: [SCRunningApplication] = []
     @ObservationIgnored private var recordingTask: Task<Void, Never>?
 
@@ -57,6 +58,10 @@ final class RecorderController {
     var selectedCamera: AVCaptureDevice? { cameras.first { $0.uniqueID == selectedCameraID } }
     var selectedMicrophone: AVCaptureDevice? { microphones.first { $0.uniqueID == selectedMicrophoneID } }
     var isIdle: Bool { phase == .idle }
+    var cameraBubbleSession: AVCaptureSession? {
+        if let capture = session?.deviceCapture, capture.hasCamera { return capture.session }
+        return previewCapture?.session
+    }
     var isCameraOnly: Bool { sourceKind == .camera }
     var usesCamera: Bool { isCameraOnly || cameraEnabled }
     var canRecord: Bool {
@@ -202,10 +207,6 @@ final class RecorderController {
         if target == nil, camera == nil {
             return
         }
-        if let previewCapture {
-            self.previewCapture = nil
-            await previewCapture.stop()
-        }
         let configuration = RecordingSession.Configuration(
             target: target,
             excludedApplications: ownApplications,
@@ -221,10 +222,14 @@ final class RecorderController {
             errorMessage = error.localizedDescription
             return
         }
+        self.session = session
+        if let previewCapture {
+            self.previewCapture = nil
+            await previewCapture.stop()
+        }
         session.onStreamError = { [weak self] error in
             Task { @MainActor in self?.handleStreamError(error) }
         }
-        self.session = session
         session.prepare()
         do {
             for remaining in stride(from: RecorderController.countdownSeconds, through: 1, by: -1) {
@@ -247,8 +252,9 @@ final class RecorderController {
     private func finish() async {
         guard case .recording = phase, let session else { return }
         phase = .finishing
+        let cameraCorner = cameraCornerNearestBubble(for: session.configuration.target)
         do {
-            _ = try await session.stop()
+            _ = try await session.stop(cameraCorner: cameraCorner)
             finishedProjectURL = session.packageURL
         } catch {
             errorMessage = error.localizedDescription
@@ -256,6 +262,20 @@ final class RecorderController {
         self.session = nil
         recentProjects = ProjectStore.listPackages()
         phase = .idle
+    }
+
+    private func cameraCornerNearestBubble(for target: CaptureTarget?) -> CameraStyle.Corner {
+        guard let target, let bubble = cameraBubbleWindow?.frame, let primaryScreen = NSScreen.screens.first else { return .bottomRight }
+        let bubbleCenter = CGPoint(x: bubble.midX, y: primaryScreen.frame.height - bubble.midY)
+        let area = target.currentFrame()
+        let isLeft = bubbleCenter.x < area.midX
+        let isTop = bubbleCenter.y < area.midY
+        switch (isLeft, isTop) {
+        case (true, true): return .topLeft
+        case (false, true): return .topRight
+        case (true, false): return .bottomLeft
+        case (false, false): return .bottomRight
+        }
     }
 
     private func handleStreamError(_ error: Error) {

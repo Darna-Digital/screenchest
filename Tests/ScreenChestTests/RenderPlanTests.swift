@@ -22,6 +22,18 @@ final class RenderPlanTests: XCTestCase {
         )
     }
 
+    func testNoBackgroundFillsCanvasWithoutCornersOrShadow() {
+        var project = project(width: 3456, height: 2234, camera: false)
+        project.edits.backgroundPresetID = BackgroundPreset.none.id
+        let canvas = CGSize(width: 1920, height: 1242)
+        let plan = RenderPlan.make(project: project, mouse: .empty, canvasSize: canvas, hasCamera: false)
+        XCTAssertTrue(plan.contentRect.contains(plan.canvasRect))
+        XCTAssertEqual(plan.contentRect.width, canvas.width, accuracy: 2)
+        XCTAssertEqual(plan.contentRect.height, canvas.height, accuracy: 2)
+        XCTAssertEqual(plan.cornerRadius, 0)
+        XCTAssertFalse(plan.shadow)
+    }
+
     func testContentRectIsCenteredAndKeepsSourceAspect() {
         let plan = RenderPlan.make(project: project(width: 3456, height: 2234, camera: false), mouse: .empty, canvasSize: CGSize(width: 1920, height: 1242), hasCamera: false)
         XCTAssertEqual(plan.contentRect.midX, 960, accuracy: 1e-6)

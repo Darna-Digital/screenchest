@@ -82,23 +82,10 @@ private struct StudioSidebar: View {
     @State private var recordingToTrash: LibraryRecording?
 
     var body: some View {
-        @Bindable var library = library
         Form {
             Section {
-                Picker("Video", selection: $library.selection) {
-                    if library.recordings.isEmpty {
-                        Text("No recordings yet").tag(URL?.none)
-                    } else if library.selection == nil {
-                        Text("Choose…").tag(URL?.none)
-                    }
-                    ForEach(library.groups) { group in
-                        Section(group.period.title) {
-                            ForEach(group.recordings) { recording in
-                                Text("\(recording.name)  ·  \(TimeFormatting.clock(recording.duration))")
-                                    .tag(Optional(recording.url))
-                            }
-                        }
-                    }
+                LabeledContent("Video") {
+                    RecordingPicker()
                 }
                 if let current = library.current {
                     HStack {
@@ -127,5 +114,103 @@ private struct StudioSidebar: View {
         } message: { _ in
             Text("The recording and its edits will be moved to the Trash.")
         }
+    }
+}
+
+private struct RecordingPicker: View {
+    @Environment(StudioLibrary.self) private var library
+    @State private var isPresented = false
+    @State private var query = ""
+    @FocusState private var searchFocused: Bool
+
+    var body: some View {
+        Button {
+            query = ""
+            isPresented.toggle()
+        } label: {
+            HStack(spacing: 6) {
+                Text(library.current?.name ?? (library.recordings.isEmpty ? "No recordings yet" : "Choose…"))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(library.current == nil ? .secondary : .primary)
+                Spacer(minLength: 0)
+                Image(systemName: "chevron.up.chevron.down")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.bordered)
+        .disabled(library.recordings.isEmpty)
+        .popover(isPresented: $isPresented, arrowEdge: .bottom) {
+            popoverContent
+        }
+    }
+
+    private var popoverContent: some View {
+        VStack(spacing: 0) {
+            TextField("Search recordings", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.leading)
+                .focused($searchFocused)
+                .onSubmit(chooseFirstMatch)
+                .padding(10)
+            Divider()
+            if groups.isEmpty {
+                Text("No matches")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, minHeight: 80)
+            } else {
+                List {
+                    ForEach(groups) { group in
+                        Section(group.period.title) {
+                            ForEach(group.recordings) { recording in
+                                Button {
+                                    choose(recording)
+                                } label: {
+                                    HStack {
+                                        Text(recording.name)
+                                            .lineLimit(1)
+                                        Spacer()
+                                        Text(TimeFormatting.clock(recording.duration))
+                                            .monospacedDigit()
+                                            .foregroundStyle(.secondary)
+                                        if recording == library.current {
+                                            Image(systemName: "checkmark")
+                                                .foregroundStyle(Color.accentColor)
+                                        }
+                                    }
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .listStyle(.inset)
+                .scrollContentBackground(.hidden)
+            }
+        }
+        .frame(width: 340, height: 360)
+        .onAppear { searchFocused = true }
+    }
+
+    private var groups: [LibraryGroup] {
+        let trimmed = query.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return library.groups }
+        return library.groups.compactMap { group in
+            let matches = group.recordings.filter { $0.name.localizedCaseInsensitiveContains(trimmed) }
+            return matches.isEmpty ? nil : LibraryGroup(period: group.period, recordings: matches)
+        }
+    }
+
+    private func chooseFirstMatch() {
+        guard let first = groups.first?.recordings.first else { return }
+        choose(first)
+    }
+
+    private func choose(_ recording: LibraryRecording) {
+        library.selection = recording.url
+        isPresented = false
     }
 }

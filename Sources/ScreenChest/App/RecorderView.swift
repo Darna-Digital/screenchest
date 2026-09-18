@@ -33,13 +33,11 @@ struct RecorderView: View {
         .onDisappear {
             if recorder.phase == .idle { recorder.stopPreview() }
         }
-        .onChange(of: recorder.previewCapture == nil) { syncCameraBubble() }
+        .onChange(of: recorder.cameraBubbleSession == nil) { syncCameraBubble() }
         .onChange(of: recorder.phase) { previous, phase in
             guard previous == .idle, case .countdown = phase else { return }
             openWindow(id: RecordingPanelView.windowID)
-            if recorder.session?.deviceCapture?.hasCamera == true {
-                openWindow(id: CameraBubbleView.windowID)
-            }
+            syncCameraBubble()
             dismissWindow(id: RecorderView.windowID)
         }
         .onChange(of: recorder.selectedCameraID) { recorder.updatePreview() }
@@ -311,9 +309,9 @@ struct RecorderView: View {
     }
 
     private func syncCameraBubble() {
-        if recorder.previewCapture != nil {
+        if recorder.cameraBubbleSession != nil {
             openWindow(id: CameraBubbleView.windowID)
-        } else if recorder.phase == .idle {
+        } else {
             dismissWindow(id: CameraBubbleView.windowID)
         }
     }

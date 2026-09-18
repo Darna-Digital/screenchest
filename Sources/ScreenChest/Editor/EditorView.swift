@@ -8,7 +8,6 @@ struct EditorView: View {
             playerArea
             transportBar
             EditorTimeline(model: model)
-                .frame(height: 74)
                 .padding(.horizontal, 16)
                 .padding(.bottom, 16)
         }
@@ -47,15 +46,9 @@ struct EditorView: View {
             }
             .buttonStyle(.bordered)
             .disabled(model.loadState != .ready)
-            Text("\(TimeFormatting.precise(model.currentTime)) / \(TimeFormatting.precise(model.duration))")
+            Text("\(TimeFormatting.precise(model.trimmedCurrentTime)) / \(TimeFormatting.precise(model.trimmedDuration))")
                 .font(.body.monospacedDigit())
             Spacer()
-            Text("Trim \(TimeFormatting.precise(model.edits.trimStart)) – \(TimeFormatting.precise(model.edits.trimEnd))")
-                .font(.callout.monospacedDigit())
-                .foregroundStyle(.secondary)
-            Text("Space to play · Z adds a zoom · ⌫ deletes")
-                .font(.caption)
-                .foregroundStyle(.tertiary)
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 10)

@@ -19,7 +19,7 @@ struct EditorCommands: Commands {
             Button(model?.isPlaying == true ? "Pause" : "Play") { model?.togglePlayback() }
                 .keyboardShortcut(.space, modifiers: [])
                 .disabled(model == nil)
-            Button("Go to Start") { model?.seek(to: model?.edits.trimStart ?? 0) }
+            Button("Go to Start") { model?.seek(to: 0) }
                 .keyboardShortcut(.home, modifiers: [])
                 .disabled(model == nil)
         }
