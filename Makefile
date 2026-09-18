@@ -18,6 +18,7 @@ app:
 	printf 'APPL????' > "$(CONTENTS)/PkgInfo"
 	codesign --force --sign "$(SIGN_IDENTITY)" "$(APP)"
 	@echo "Built $(APP) (signed with: $(SIGN_IDENTITY))"
+	@[ "$(SIGN_IDENTITY)" != "-" ] || echo "⚠ ad-hoc signed: Screen Recording permission will not survive rebuilds — run scripts/fix-permissions.sh"
 
 run: app
 	open "$(APP)"
