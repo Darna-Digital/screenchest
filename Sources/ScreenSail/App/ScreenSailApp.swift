@@ -9,8 +9,17 @@ struct ScreenSailApp: App {
             RecorderView()
                 .environment(recorder)
         }
+        .windowStyle(.plain)
+        .windowLevel(.floating)
         .windowResizability(.contentSize)
-        .defaultPosition(.center)
+        .windowBackgroundDragBehavior(.enabled)
+        .restorationBehavior(.disabled)
+        .defaultWindowPlacement { content, _ in
+            WindowPlacement(.bottom, size: content.sizeThatFits(.unspecified))
+        }
+        .commands {
+            RecorderCommands()
+        }
 
         Window("Recording", id: RecordingPanelView.windowID) {
             RecordingPanelView()

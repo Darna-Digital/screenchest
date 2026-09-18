@@ -15,6 +15,7 @@ struct RecordingPanelView: View {
         .padding(.vertical, 12)
         .frame(minWidth: 300)
         .background(.ultraThinMaterial)
+        .movesWindowOnDrag()
         .onAppear {
             if recorder.phase == .idle { leave() }
         }
@@ -72,7 +73,6 @@ struct RecordingPanelView: View {
             openWindow(value: url)
         }
         openWindow(id: RecorderView.windowID)
-        dismissWindow(id: CameraBubbleView.windowID)
         dismissWindow(id: RecordingPanelView.windowID)
     }
 }

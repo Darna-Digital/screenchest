@@ -11,20 +11,26 @@ struct CameraBubbleView: View {
         Group {
             if let capture = recorder.session?.deviceCapture, capture.hasCamera {
                 CameraPreview(session: capture.session)
+            } else if let preview = recorder.previewCapture {
+                CameraPreview(session: preview.session)
             } else {
                 Color.black
             }
         }
         .frame(width: CameraBubbleView.diameter, height: CameraBubbleView.diameter)
         .clipShape(Circle())
+        .overlay(WindowDragArea().clipShape(Circle()))
         .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 3))
         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         .padding(20)
-        .onAppear {
-            if recorder.phase == .idle { dismissWindow(id: CameraBubbleView.windowID) }
-        }
-        .onChange(of: recorder.phase) { _, phase in
-            if phase == .idle { dismissWindow(id: CameraBubbleView.windowID) }
+        .onAppear { dismissIfUnused() }
+        .onChange(of: recorder.phase) { dismissIfUnused() }
+        .onChange(of: recorder.previewCapture == nil) { dismissIfUnused() }
+    }
+
+    private func dismissIfUnused() {
+        if recorder.phase == .idle, recorder.previewCapture == nil {
+            dismissWindow(id: CameraBubbleView.windowID)
         }
     }
 }

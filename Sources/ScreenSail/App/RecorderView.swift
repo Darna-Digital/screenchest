@@ -1,40 +1,32 @@
 import AppKit
+import AVFoundation
 import SwiftUI
 
 struct RecorderView: View {
     static let windowID = "recorder"
+    static let barCornerRadius: CGFloat = 26
+    static let itemCornerRadius: CGFloat = 12
+    static let windowPadding: CGFloat = 28
 
     @Environment(RecorderController.self) private var recorder
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
-        @Bindable var recorder = recorder
-        VStack(alignment: .leading, spacing: 18) {
-            header
-            sourceSection(recorder: $recorder)
+        VStack(spacing: 10) {
+            toolbar
             if !recorder.hasScreenAccess, !recorder.isCameraOnly {
-                permissionCard
+                permissionRow
             }
-            devicesSection(recorder: $recorder)
-            if recorder.usesCamera, let preview = recorder.previewCapture {
-                CameraPreview(session: preview.session)
-                    .frame(height: 180)
-                    .frame(maxWidth: .infinity)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-            }
-            recordButton
             if let message = recorder.errorMessage {
-                Text(message)
-                    .font(.callout)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
+                messageRow(message)
             }
-            recentSection
         }
-        .padding(22)
-        .frame(width: 440)
+        .padding(RecorderView.windowPadding)
+        .environment(\.colorScheme, .dark)
         .task { await recorder.refreshSources() }
+        .onAppear { syncCameraBubble() }
+        .onChange(of: recorder.previewCapture == nil) { syncCameraBubble() }
         .onChange(of: recorder.phase) { previous, phase in
             guard previous == .idle, case .countdown = phase else { return }
             openWindow(id: RecordingPanelView.windowID)
@@ -47,166 +39,332 @@ struct RecorderView: View {
         .onChange(of: recorder.sourceKind) { Task { await recorder.sourceKindDidChange() } }
     }
 
-    private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("ScreenSail")
-                    .font(.system(size: 22, weight: .bold, design: .rounded))
-                Text("Record your screen, camera and voice.")
-                    .foregroundStyle(.secondary)
+    private var toolbar: some View {
+        HStack(spacing: 6) {
+            ToolbarIconButton(systemImage: "xmark", help: "Close") {
+                dismissWindow(id: RecorderView.windowID)
             }
-            Spacer()
-            Button {
-                Task { await recorder.refreshSources() }
-            } label: {
-                Image(systemName: "arrow.clockwise")
-            }
-            .help("Refresh displays, windows and devices")
+            ToolbarDivider()
+            sourceButtons
+            ToolbarDivider()
+            cameraMenu
+            microphoneMenu
+            systemAudioButton
+            ToolbarDivider()
+            settingsMenu
+            recordButton
         }
+        .padding(8)
+        .background(.black.opacity(0.55))
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: RecorderView.barCornerRadius, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: RecorderView.barCornerRadius, style: .continuous)
+                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.28), radius: 10, y: 4)
+        .movesWindowOnDrag()
     }
 
-    private var permissionCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("Screen Recording permission needed", systemImage: "lock.shield")
-                .font(.headline)
-            Text("macOS requires permission before ScreenSail can capture your screen. After enabling ScreenSail in System Settings, relaunch the app for it to take effect.")
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Button("Allow Screen Recording") { recorder.requestScreenAccess() }
-                    .buttonStyle(.borderedProminent)
-                Button("Open System Settings") {
-                    if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-                        NSWorkspace.shared.open(url)
+    @ViewBuilder
+    private var sourceButtons: some View {
+        if recorder.displays.count > 1 {
+            Menu {
+                ForEach(recorder.displays) { display in
+                    Button("\(display.title) · \(display.subtitle)") {
+                        recorder.selectedDisplayID = display.id
+                        recorder.sourceKind = .display
                     }
                 }
+            } label: {
+                SourceLabel(systemImage: "display", title: "Display", isSelected: recorder.sourceKind == .display)
+            }
+            .menuStyle(.button)
+            .buttonStyle(.plain)
+            .menuIndicator(.hidden)
+        } else {
+            Button {
+                recorder.sourceKind = .display
+            } label: {
+                SourceLabel(systemImage: "display", title: "Display", isSelected: recorder.sourceKind == .display)
+            }
+            .buttonStyle(.plain)
+        }
+
+        Menu {
+            if recorder.windows.isEmpty {
+                Text("No windows found")
+            }
+            ForEach(recorder.windows) { window in
+                Button("\(window.subtitle) — \(window.title)") {
+                    recorder.selectedWindowID = window.id
+                    recorder.sourceKind = .window
+                }
+            }
+            Divider()
+            Button("Refresh Windows") { Task { await recorder.refreshSources() } }
+        } label: {
+            SourceLabel(
+                systemImage: "macwindow",
+                title: recorder.sourceKind == .window ? (recorder.selectedTarget?.subtitle ?? "Window") : "Window",
+                isSelected: recorder.sourceKind == .window
+            )
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+
+        Button {
+            recorder.sourceKind = .camera
+        } label: {
+            SourceLabel(systemImage: "web.camera", title: "Camera", isSelected: recorder.sourceKind == .camera)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var cameraMenu: some View {
+        Menu {
+            Button("No camera") { Task { await recorder.setCameraEnabled(false) } }
+                .disabled(recorder.isCameraOnly)
+            Divider()
+            ForEach(recorder.cameras, id: \.uniqueID) { device in
+                Button(device.localizedName) {
+                    recorder.selectedCameraID = device.uniqueID
+                    Task { await recorder.setCameraEnabled(true) }
+                }
+            }
+        } label: {
+            DeviceLabel(
+                systemImage: recorder.usesCamera ? "video" : "video.slash",
+                title: recorder.usesCamera ? (recorder.selectedCamera?.localizedName ?? "No camera") : "No camera",
+                isActive: recorder.usesCamera
+            )
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+    }
+
+    private var microphoneMenu: some View {
+        Menu {
+            Button("No microphone") { Task { await recorder.setMicrophoneEnabled(false) } }
+            Divider()
+            ForEach(recorder.microphones, id: \.uniqueID) { device in
+                Button(device.localizedName) {
+                    recorder.selectedMicrophoneID = device.uniqueID
+                    Task { await recorder.setMicrophoneEnabled(true) }
+                }
+            }
+        } label: {
+            DeviceLabel(
+                systemImage: recorder.microphoneEnabled ? "mic" : "mic.slash",
+                title: recorder.microphoneEnabled ? (recorder.selectedMicrophone?.localizedName ?? "No microphone") : "No microphone",
+                isActive: recorder.microphoneEnabled
+            )
+        }
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+    }
+
+    private var systemAudioButton: some View {
+        Button {
+            recorder.systemAudioEnabled.toggle()
+        } label: {
+            DeviceLabel(
+                systemImage: recorder.systemAudioEnabled && !recorder.isCameraOnly ? "speaker.wave.2" : "speaker.slash",
+                title: recorder.systemAudioEnabled && !recorder.isCameraOnly ? "System audio" : "No system audio",
+                isActive: recorder.systemAudioEnabled && !recorder.isCameraOnly
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(recorder.isCameraOnly)
+    }
+
+    private var settingsMenu: some View {
+        Menu {
+            Section("Recent recordings") {
+                if recorder.recentProjects.isEmpty {
+                    Text("No recordings yet")
+                }
+                ForEach(recorder.recentProjects.prefix(6), id: \.self) { url in
+                    Button(url.deletingPathExtension().lastPathComponent) { openWindow(value: url) }
+                }
+            }
+            Divider()
+            Button("Open Recordings Folder") {
+                try? FileManager.default.createDirectory(at: ProjectStore.libraryURL, withIntermediateDirectories: true)
+                NSWorkspace.shared.open(ProjectStore.libraryURL)
+            }
+            Button("Refresh Sources") { Task { await recorder.refreshSources() } }
+            if !recorder.hasScreenAccess {
+                Divider()
+                Button("Allow Screen Recording") { recorder.requestScreenAccess() }
                 Button("Relaunch ScreenSail") { recorder.relaunch() }
             }
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: 40, height: 56)
+                .contentShape(Rectangle())
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10))
-    }
-
-    private func sourceSection(recorder: Bindable<RecorderController>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Picker("Source", selection: recorder.sourceKind) {
-                ForEach(RecorderController.SourceKind.allCases) { kind in
-                    Text(kind.rawValue).tag(kind)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-
-            switch recorder.wrappedValue.sourceKind {
-            case .camera:
-                Text("Records only your camera, like a video message.")
-                    .foregroundStyle(.secondary)
-            case .display:
-                Picker("Display", selection: recorder.selectedDisplayID) {
-                    ForEach(recorder.wrappedValue.displays) { target in
-                        Text("\(target.title) · \(target.subtitle)").tag(Optional(target.id))
-                    }
-                }
-            case .window:
-                if recorder.wrappedValue.windows.isEmpty {
-                    Text("No windows found. Open a window and refresh.")
-                        .foregroundStyle(.secondary)
-                } else {
-                    Picker("Window", selection: recorder.selectedWindowID) {
-                        ForEach(recorder.wrappedValue.windows) { target in
-                            Text("\(target.subtitle) — \(target.title)").tag(Optional(target.id))
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func devicesSection(recorder: Bindable<RecorderController>) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Toggle("Camera", isOn: Binding(
-                    get: { recorder.wrappedValue.usesCamera },
-                    set: { value in Task { await recorder.wrappedValue.setCameraEnabled(value) } }
-                ))
-                .toggleStyle(.switch)
-                .frame(width: 130, alignment: .leading)
-                .disabled(recorder.wrappedValue.isCameraOnly)
-                Picker("", selection: recorder.selectedCameraID) {
-                    ForEach(recorder.wrappedValue.cameras, id: \.uniqueID) { device in
-                        Text(device.localizedName).tag(Optional(device.uniqueID))
-                    }
-                }
-                .labelsHidden()
-                .disabled(!recorder.wrappedValue.usesCamera)
-            }
-            HStack {
-                Toggle("Microphone", isOn: Binding(
-                    get: { recorder.wrappedValue.microphoneEnabled },
-                    set: { value in Task { await recorder.wrappedValue.setMicrophoneEnabled(value) } }
-                ))
-                .toggleStyle(.switch)
-                .frame(width: 130, alignment: .leading)
-                Picker("", selection: recorder.selectedMicrophoneID) {
-                    ForEach(recorder.wrappedValue.microphones, id: \.uniqueID) { device in
-                        Text(device.localizedName).tag(Optional(device.uniqueID))
-                    }
-                }
-                .labelsHidden()
-                .disabled(!recorder.wrappedValue.microphoneEnabled)
-            }
-            Toggle("System audio", isOn: recorder.systemAudioEnabled)
-                .toggleStyle(.switch)
-                .disabled(recorder.wrappedValue.isCameraOnly)
-        }
-        .disabled(!recorder.wrappedValue.isIdle)
+        .menuStyle(.button)
+        .buttonStyle(.plain)
+        .menuIndicator(.hidden)
+        .foregroundStyle(.secondary)
     }
 
     private var recordButton: some View {
         Button {
             recorder.startRecording()
         } label: {
-            Label(recorder.isIdle ? "Start Recording" : "Recording…", systemImage: "record.circle")
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 6)
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(.white)
+                    .frame(width: 12, height: 12)
+                Text("Record")
+                    .fontWeight(.semibold)
+                    .fixedSize()
+            }
+            .foregroundStyle(.white)
+            .padding(.horizontal, 18)
+            .frame(height: 44)
+            .background(recorder.canRecord ? Color.red : Color.gray.opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.borderedProminent)
-        .tint(.red)
-        .controlSize(.large)
+        .buttonStyle(.plain)
         .disabled(!recorder.canRecord)
         .keyboardShortcut("r", modifiers: .command)
+        .help(recorder.canRecord ? "Start recording (⌘R)" : "Choose a source first")
     }
 
-    @ViewBuilder
-    private var recentSection: some View {
-        if !recorder.recentProjects.isEmpty {
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Recent recordings")
+    private var permissionRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lock.shield")
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Screen Recording permission needed")
                     .font(.headline)
-                ForEach(recorder.recentProjects.prefix(5), id: \.self) { url in
-                    HStack {
-                        Button {
-                            openWindow(value: url)
-                        } label: {
-                            Label(url.deletingPathExtension().lastPathComponent, systemImage: "film")
-                                .lineLimit(1)
-                        }
-                        .buttonStyle(.plain)
-                        Spacer()
-                        Button {
-                            NSWorkspace.shared.activateFileViewerSelecting([url])
-                        } label: {
-                            Image(systemName: "folder")
-                        }
-                        .buttonStyle(.plain)
-                        .foregroundStyle(.secondary)
-                        .help("Show in Finder")
-                    }
-                }
+                Text("Allow ScreenSail in System Settings, then relaunch.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
+            Spacer()
+            Button("Allow") { recorder.requestScreenAccess() }
+            Button("Relaunch") { recorder.relaunch() }
         }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.black.opacity(0.55))
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func messageRow(_ message: String) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.yellow)
+            Text(message)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button {
+                recorder.errorMessage = nil
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 12)
+        .background(.black.opacity(0.55))
+        .background(.regularMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func syncCameraBubble() {
+        if recorder.previewCapture != nil {
+            openWindow(id: CameraBubbleView.windowID)
+        } else if recorder.phase == .idle {
+            dismissWindow(id: CameraBubbleView.windowID)
+        }
+    }
+}
+
+private struct SourceLabel: View {
+    let systemImage: String
+    let title: String
+    let isSelected: Bool
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.system(size: 22, weight: .regular))
+                .frame(height: 26)
+            Text(DeviceLabel.shortened(title))
+                .font(.system(size: 11))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .foregroundStyle(isSelected ? .primary : .secondary)
+        .frame(minWidth: 76)
+        .frame(height: 56)
+        .background(isSelected ? Color.white.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+    }
+}
+
+private struct DeviceLabel: View {
+    static let maximumTitleLength = 24
+
+    let systemImage: String
+    let title: String
+    let isActive: Bool
+
+    static func shortened(_ title: String) -> String {
+        title.count > maximumTitleLength ? String(title.prefix(maximumTitleLength - 1)) + "…" : title
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.system(size: 16, weight: .medium))
+            Text(DeviceLabel.shortened(title))
+                .font(.system(size: 14))
+                .lineLimit(1)
+                .fixedSize()
+        }
+        .foregroundStyle(isActive ? .primary : .secondary)
+        .padding(.horizontal, 12)
+        .frame(height: 44)
+        .background(isActive ? Color.white.opacity(0.1) : Color.clear, in: RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+    }
+}
+
+private struct ToolbarIconButton: View {
+    let systemImage: String
+    let help: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.system(size: 15, weight: .bold))
+                .frame(width: 44, height: 56)
+                .background(Color.white.opacity(0.1), in: RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+                .contentShape(RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help(help)
+    }
+}
+
+private struct ToolbarDivider: View {
+    var body: some View {
+        Rectangle()
+            .fill(.white.opacity(0.14))
+            .frame(width: 1, height: 40)
+            .padding(.horizontal, 4)
     }
 }
