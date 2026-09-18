@@ -1,11 +1,11 @@
 import SwiftUI
 
 @main
-struct ScreenSailApp: App {
+struct ScreenChestApp: App {
     @State private var recorder = RecorderController()
 
     var body: some Scene {
-        Window("ScreenSail", id: RecorderView.windowID) {
+        Window("ScreenChest", id: RecorderView.windowID) {
             RecorderView()
                 .environment(recorder)
         }
@@ -48,10 +48,9 @@ struct ScreenSailApp: App {
         }
 
         WindowGroup("Editor", for: URL.self) { $packageURL in
-            if let packageURL {
-                EditorView(packageURL: packageURL)
-            }
+            EditorView(initialURL: packageURL)
         }
+        .handlesExternalEvents(matching: [ProjectStore.packageExtension])
         .defaultSize(width: 1280, height: 840)
         .commands {
             EditorCommands()

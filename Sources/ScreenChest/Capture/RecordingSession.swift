@@ -22,7 +22,7 @@ final class RecordingSession: @unchecked Sendable {
     let deviceCapture: DeviceCapture?
     var onStreamError: ((Error) -> Void)?
 
-    private let queue = DispatchQueue(label: "screensail.recording", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "screenchest.recording", qos: .userInitiated)
     private let audioSettings: [[String: Any]]
     private let audioTracks: [AudioTrackKind]
     private let mouseTracker: MouseTracker?

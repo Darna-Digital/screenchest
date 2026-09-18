@@ -33,7 +33,7 @@ enum CompositorError: Error {
 
 final class SailVideoCompositor: NSObject, AVVideoCompositing {
     private let renderer = FrameRenderer()
-    private let renderQueue = DispatchQueue(label: "screensail.compositor", qos: .userInteractive)
+    private let renderQueue = DispatchQueue(label: "screenchest.compositor", qos: .userInteractive)
     private let pixelBufferAttributes: [String: any Sendable] = [
         kCVPixelBufferPixelFormatTypeKey as String: [kCVPixelFormatType_32BGRA],
         kCVPixelBufferMetalCompatibilityKey as String: true,

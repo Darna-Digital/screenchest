@@ -157,7 +157,7 @@ final class RecorderController {
         previewCapture?.start()
     }
 
-    private func stopPreview() {
+    func stopPreview() {
         guard let previewCapture else { return }
         self.previewCapture = nil
         Task { await previewCapture.stop() }
@@ -256,7 +256,6 @@ final class RecorderController {
         self.session = nil
         recentProjects = ProjectStore.listPackages()
         phase = .idle
-        updatePreview()
     }
 
     private func handleStreamError(_ error: Error) {

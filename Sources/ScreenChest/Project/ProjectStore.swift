@@ -1,7 +1,7 @@
 import Foundation
 
 enum ProjectStore {
-    static let packageExtension = "screensail"
+    static let packageExtension = "screenchest"
     static let projectFileName = "project.json"
     static let screenFileName = "screen.mov"
     static let cameraFileName = "camera.mov"
@@ -10,7 +10,7 @@ enum ProjectStore {
     static var libraryURL: URL {
         let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Movies")
-        return movies.appendingPathComponent("ScreenSail", isDirectory: true)
+        return movies.appendingPathComponent("ScreenChest", isDirectory: true)
     }
 
     static func newPackageURL(date: Date = Date()) -> URL {

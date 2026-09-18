@@ -2,12 +2,12 @@
 import PackageDescription
 
 let package = Package(
-    name: "ScreenSail",
+    name: "ScreenChest",
     platforms: [.macOS(.v15)],
     targets: [
         .executableTarget(
-            name: "ScreenSail",
-            path: "Sources/ScreenSail",
+            name: "ScreenChest",
+            path: "Sources/ScreenChest",
             swiftSettings: [.swiftLanguageMode(.v5)],
             linkerSettings: [
                 .linkedFramework("ScreenCaptureKit"),
@@ -20,9 +20,9 @@ let package = Package(
             ]
         ),
         .testTarget(
-            name: "ScreenSailTests",
-            dependencies: ["ScreenSail"],
-            path: "Tests/ScreenSailTests",
+            name: "ScreenChestTests",
+            dependencies: ["ScreenChest"],
+            path: "Tests/ScreenChestTests",
             swiftSettings: [.swiftLanguageMode(.v5)]
         ),
     ]

@@ -5,15 +5,15 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleDisplayName</key>
-	<string>ScreenSail</string>
+	<string>ScreenChest</string>
 	<key>CFBundleExecutable</key>
-	<string>ScreenSail</string>
+	<string>ScreenChest</string>
 	<key>CFBundleIdentifier</key>
-	<string>com.darnadigital.screensail</string>
+	<string>com.darnadigital.screenchest</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>ScreenSail</string>
+	<string>ScreenChest</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -25,15 +25,53 @@
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
 	<key>NSCameraUsageDescription</key>
-	<string>ScreenSail records your camera so you can appear in your recordings.</string>
+	<string>ScreenChest records your camera so you can appear in your recordings.</string>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>ScreenSail records your microphone so your voice is part of the recording.</string>
+	<string>ScreenChest records your microphone so your voice is part of the recording.</string>
 	<key>NSCameraUseContinuityCameraDeviceType</key>
 	<true/>
 	<key>NSHighResolutionCapable</key>
 	<true/>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>ScreenChest Recording</string>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>LSHandlerRank</key>
+			<string>Owner</string>
+			<key>LSTypeIsPackage</key>
+			<true/>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>com.darnadigital.screenchest.recording</string>
+			</array>
+		</dict>
+	</array>
+	<key>UTExportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.darnadigital.screenchest.recording</string>
+			<key>UTTypeDescription</key>
+			<string>ScreenChest Recording</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>com.apple.package</string>
+				<string>public.movie</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>screenchest</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 	<key>NSHumanReadableCopyright</key>
 	<string>Copyright © 2026 Darna Digital</string>
 </dict>

@@ -20,7 +20,6 @@ struct CameraBubbleView: View {
         .frame(width: CameraBubbleView.diameter, height: CameraBubbleView.diameter)
         .clipShape(Circle())
         .overlay(WindowDragArea().clipShape(Circle()))
-        .overlay(Circle().strokeBorder(.white.opacity(0.9), lineWidth: 3))
         .shadow(color: .black.opacity(0.35), radius: 14, y: 6)
         .padding(20)
         .onAppear { dismissIfUnused() }

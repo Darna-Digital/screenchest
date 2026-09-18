@@ -18,7 +18,6 @@ struct InspectorView: View {
             exportSection
         }
         .formStyle(.grouped)
-        .scrollContentBackground(.hidden)
     }
 
     private var zoomSection: some View {

@@ -1,10 +1,10 @@
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class ProjectStoreTests: XCTestCase {
     func testProjectAndMouseTrackRoundTrip() throws {
         let packageURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ScreenSailTests-\(UUID().uuidString)")
+            .appendingPathComponent("ScreenChestTests-\(UUID().uuidString)")
             .appendingPathExtension(ProjectStore.packageExtension)
         try ProjectStore.createPackage(at: packageURL)
         defer { try? FileManager.default.removeItem(at: packageURL) }

@@ -12,8 +12,8 @@ final class DeviceCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
 
     private let videoOutput = AVCaptureVideoDataOutput()
     private let audioOutput = AVCaptureAudioDataOutput()
-    private let sampleQueue = DispatchQueue(label: "screensail.devices.samples", qos: .userInteractive)
-    private let controlQueue = DispatchQueue(label: "screensail.devices.control", qos: .userInitiated)
+    private let sampleQueue = DispatchQueue(label: "screenchest.devices.samples", qos: .userInteractive)
+    private let controlQueue = DispatchQueue(label: "screenchest.devices.control", qos: .userInitiated)
 
     init(camera: AVCaptureDevice?, microphone: AVCaptureDevice?) throws {
         hasCamera = camera != nil

@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class MouseTrackTests: XCTestCase {
     func testEmptyTrackReturnsCenter() {

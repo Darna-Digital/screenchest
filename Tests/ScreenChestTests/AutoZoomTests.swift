@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class AutoZoomTests: XCTestCase {
     private func track(clicks: [(Double, Double, Double)]) -> MouseTrack {

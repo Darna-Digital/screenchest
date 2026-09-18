@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class ZoomTrackTests: XCTestCase {
     private func assertValid(_ state: ZoomState, file: StaticString = #filePath, line: UInt = #line) {

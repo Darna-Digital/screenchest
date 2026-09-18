@@ -25,7 +25,13 @@ struct RecorderView: View {
         .padding(RecorderView.windowPadding)
         .environment(\.colorScheme, .dark)
         .task { await recorder.refreshSources() }
-        .onAppear { syncCameraBubble() }
+        .onAppear {
+            recorder.updatePreview()
+            syncCameraBubble()
+        }
+        .onDisappear {
+            if recorder.phase == .idle { recorder.stopPreview() }
+        }
         .onChange(of: recorder.previewCapture == nil) { syncCameraBubble() }
         .onChange(of: recorder.phase) { previous, phase in
             guard previous == .idle, case .countdown = phase else { return }
@@ -200,7 +206,7 @@ struct RecorderView: View {
             if !recorder.hasScreenAccess {
                 Divider()
                 Button("Allow Screen Recording") { recorder.requestScreenAccess() }
-                Button("Relaunch ScreenSail") { recorder.relaunch() }
+                Button("Relaunch ScreenChest") { recorder.relaunch() }
             }
         } label: {
             Image(systemName: "gearshape")
@@ -244,7 +250,7 @@ struct RecorderView: View {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Screen Recording permission needed")
                     .font(.headline)
-                Text("Allow ScreenSail in System Settings, then relaunch.")
+                Text("Allow ScreenChest in System Settings, then relaunch.")
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }

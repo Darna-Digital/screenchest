@@ -10,8 +10,8 @@ final class ScreenStream: NSObject, SCStreamOutput, SCStreamDelegate {
     private let onVideo: VideoHandler
     private let onAudio: AudioHandler
     private let onError: ErrorHandler
-    private let videoQueue = DispatchQueue(label: "screensail.stream.video", qos: .userInteractive)
-    private let audioQueue = DispatchQueue(label: "screensail.stream.audio", qos: .userInteractive)
+    private let videoQueue = DispatchQueue(label: "screenchest.stream.video", qos: .userInteractive)
+    private let audioQueue = DispatchQueue(label: "screenchest.stream.audio", qos: .userInteractive)
 
     init(
         filter: SCContentFilter,

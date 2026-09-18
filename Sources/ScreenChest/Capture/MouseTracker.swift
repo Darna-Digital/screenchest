@@ -12,7 +12,7 @@ final class MouseTracker {
         let y: Double
     }
 
-    private let queue = DispatchQueue(label: "screensail.mouse", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "screenchest.mouse", qos: .userInitiated)
     private let frameProvider: () -> CGRect
     private var timer: DispatchSourceTimer?
     private var frame: CGRect

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build, launch, and keep ScreenSail.app current: every save under Sources/,
+# Build, launch, and keep ScreenChest.app current: every save under Sources/,
 # Resources/ or to the package manifest rebuilds the bundle (make app) and
 # replaces the running app. A failed build leaves the old app up, prints the
 # compiler's errors here and waits for the next save.
@@ -12,7 +12,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$project_dir"
 
-app="${project_dir}/build/ScreenSail.app"
+app="${project_dir}/build/ScreenChest.app"
 stamp="${project_dir}/.build/watch.stamp"
 watched=(Sources Resources Package.swift Makefile)
 
@@ -42,7 +42,7 @@ build_and_relaunch() {
   touch "$stamp"
   if make app; then
     relaunch
-    echo "✓ $(date +%H:%M:%S) ScreenSail.app relaunched — watching ${watched[*]}"
+    echo "✓ $(date +%H:%M:%S) ScreenChest.app relaunched — watching ${watched[*]}"
   else
     echo "✗ $(date +%H:%M:%S) build failed — the running app stays up; save again to retry"
   fi

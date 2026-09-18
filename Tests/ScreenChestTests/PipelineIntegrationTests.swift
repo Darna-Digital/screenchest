@@ -1,7 +1,7 @@
 import AVFoundation
 import CoreImage
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class PipelineIntegrationTests: XCTestCase {
     private static let sourceSize = CGSize(width: 640, height: 400)
@@ -13,7 +13,7 @@ final class PipelineIntegrationTests: XCTestCase {
 
     override func setUpWithError() throws {
         packageURL = FileManager.default.temporaryDirectory
-            .appendingPathComponent("ScreenSailPipeline-\(UUID().uuidString)")
+            .appendingPathComponent("ScreenChestPipeline-\(UUID().uuidString)")
             .appendingPathExtension(ProjectStore.packageExtension)
         try ProjectStore.createPackage(at: packageURL)
         try Self.writeVideo(to: packageURL.appendingPathComponent(ProjectStore.screenFileName), size: Self.sourceSize) { _ in
@@ -70,7 +70,7 @@ final class PipelineIntegrationTests: XCTestCase {
         let canvas = RenderPlan.canvasSize(for: project.recording.pixelSize, resolution: project.edits.output.resolution)
         let plan = RenderPlan.make(project: project, mouse: mouse, canvasSize: canvas, hasCamera: true)
         let videoComposition = CompositionBuilder.makeVideoComposition(for: composition, plan: plan, frameRate: 60)
-        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("ScreenSailExport-\(UUID().uuidString).mp4")
+        let outputURL = FileManager.default.temporaryDirectory.appendingPathComponent("ScreenChestExport-\(UUID().uuidString).mp4")
         defer { try? FileManager.default.removeItem(at: outputURL) }
 
         let progress = ProgressLog()

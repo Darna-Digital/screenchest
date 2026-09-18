@@ -71,8 +71,9 @@ struct RecordingPanelView: View {
         if let url = recorder.finishedProjectURL {
             recorder.finishedProjectURL = nil
             openWindow(value: url)
+        } else {
+            openWindow(id: RecorderView.windowID)
         }
-        openWindow(id: RecorderView.windowID)
         dismissWindow(id: RecordingPanelView.windowID)
     }
 }

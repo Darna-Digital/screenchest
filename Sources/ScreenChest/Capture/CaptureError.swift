@@ -14,7 +14,7 @@ enum CaptureError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .screenRecordingNotAllowed:
-            "Screen Recording permission is required. Enable ScreenSail in System Settings → Privacy & Security → Screen & System Audio Recording, then relaunch."
+            "Screen Recording permission is required. Enable ScreenChest in System Settings → Privacy & Security → Screen & System Audio Recording, then relaunch."
         case .cameraNotAllowed:
             "Camera access was denied. Enable it in System Settings → Privacy & Security → Camera."
         case .microphoneNotAllowed:

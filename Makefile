@@ -1,8 +1,8 @@
-APP_NAME = ScreenSail
+APP_NAME = ScreenChest
 BUILD_DIR = build
 APP = $(BUILD_DIR)/$(APP_NAME).app
 CONTENTS = $(APP)/Contents
-DEV_IDENTITY = ScreenSail Dev
+DEV_IDENTITY = ScreenChest Dev
 SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q "\"$(DEV_IDENTITY)\"" && echo "$(DEV_IDENTITY)" || echo "-")
 
 .PHONY: all app run clean

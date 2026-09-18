@@ -1,5 +1,5 @@
 import XCTest
-@testable import ScreenSail
+@testable import ScreenChest
 
 final class RenderPlanTests: XCTestCase {
     private func project(width: Int, height: Int, camera: Bool) -> Project {
