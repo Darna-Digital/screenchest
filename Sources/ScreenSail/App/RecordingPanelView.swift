@@ -9,11 +9,6 @@ struct RecordingPanelView: View {
 
     var body: some View {
         HStack(spacing: 14) {
-            if let capture = recorder.session?.deviceCapture, capture.hasCamera {
-                CameraPreview(session: capture.session)
-                    .frame(width: 52, height: 52)
-                    .clipShape(Circle())
-            }
             content
         }
         .padding(.horizontal, 18)
@@ -77,6 +72,7 @@ struct RecordingPanelView: View {
             openWindow(value: url)
         }
         openWindow(id: RecorderView.windowID)
+        dismissWindow(id: CameraBubbleView.windowID)
         dismissWindow(id: RecordingPanelView.windowID)
     }
 }

@@ -3,12 +3,14 @@ import ScreenCaptureKit
 
 final class RecordingSession: @unchecked Sendable {
     struct Configuration {
-        var target: CaptureTarget
+        var target: CaptureTarget?
         var excludedApplications: [SCRunningApplication]
         var camera: AVCaptureDevice?
         var microphone: AVCaptureDevice?
         var capturesSystemAudio: Bool
         var frameRate: Int
+
+        var isCameraOnly: Bool { target == nil }
     }
 
     static let cameraFrameRate = 30
@@ -21,21 +23,25 @@ final class RecordingSession: @unchecked Sendable {
     var onStreamError: ((Error) -> Void)?
 
     private let queue = DispatchQueue(label: "screensail.recording", qos: .userInitiated)
-    private let screenWriter: MediaWriter
-    private let mouseTracker: MouseTracker
+    private let audioSettings: [[String: Any]]
     private let audioTracks: [AudioTrackKind]
-    private let pixelSize: CGSize
+    private let mouseTracker: MouseTracker?
+    private var screenWriter: MediaWriter?
+    private var pixelSize: CGSize
     private var stream: ScreenStream?
     private var cameraWriter: MediaWriter?
     private var cameraWriterFailed = false
+    private var acceptsCameraOnlyFrames = false
     private var startTime: CMTime?
     private var failure: Error?
 
     init(configuration: Configuration, packageURL: URL) throws {
         self.configuration = configuration
         self.packageURL = packageURL
+        if configuration.isCameraOnly, configuration.camera == nil {
+            throw CaptureError.cannotUseCamera
+        }
         try ProjectStore.createPackage(at: packageURL)
-        pixelSize = configuration.target.pixelSize
 
         if configuration.camera != nil || configuration.microphone != nil {
             deviceCapture = try DeviceCapture(camera: configuration.camera, microphone: configuration.microphone)
@@ -44,25 +50,31 @@ final class RecordingSession: @unchecked Sendable {
         }
 
         var tracks: [AudioTrackKind] = []
-        var audioSettings: [[String: Any]] = []
+        var settings: [[String: Any]] = []
         if let microphoneSettings = deviceCapture?.microphoneWriterSettings {
             tracks.append(.microphone)
-            audioSettings.append(microphoneSettings)
+            settings.append(microphoneSettings)
         }
-        if configuration.capturesSystemAudio {
+        if configuration.capturesSystemAudio, !configuration.isCameraOnly {
             tracks.append(.systemAudio)
-            audioSettings.append(AudioSettings.aac(channels: 2, sampleRate: 48_000, bitRate: 160_000))
+            settings.append(AudioSettings.aac(channels: 2, sampleRate: 48_000, bitRate: 160_000))
         }
         audioTracks = tracks
+        audioSettings = settings
 
-        screenWriter = try MediaWriter(
-            url: packageURL.appendingPathComponent(ProjectStore.screenFileName),
-            video: VideoSpec(size: pixelSize, frameRate: configuration.frameRate, bitsPerPixel: RecordingSession.screenBitsPerPixel),
-            audio: audioSettings
-        )
-
-        let target = configuration.target
-        mouseTracker = MouseTracker(frameProvider: { target.currentFrame() })
+        if let target = configuration.target {
+            pixelSize = target.pixelSize
+            screenWriter = try MediaWriter(
+                url: packageURL.appendingPathComponent(ProjectStore.screenFileName),
+                video: VideoSpec(size: pixelSize, frameRate: configuration.frameRate, bitsPerPixel: RecordingSession.screenBitsPerPixel),
+                audio: settings
+            )
+            mouseTracker = MouseTracker(frameProvider: { target.currentFrame() })
+        } else {
+            pixelSize = .zero
+            screenWriter = nil
+            mouseTracker = nil
+        }
 
         deviceCapture?.onVideo = { [weak self] in self?.handleCameraFrame($0) }
         deviceCapture?.onAudio = { [weak self] in self?.handleMicrophoneAudio($0) }
@@ -73,7 +85,11 @@ final class RecordingSession: @unchecked Sendable {
     }
 
     func start() async throws {
-        let filter = configuration.target.makeContentFilter(excluding: configuration.excludedApplications)
+        guard let target = configuration.target else {
+            queue.async { self.acceptsCameraOnlyFrames = true }
+            return
+        }
+        let filter = target.makeContentFilter(excluding: configuration.excludedApplications)
         let streamConfiguration = SCStreamConfiguration()
         streamConfiguration.width = Int(pixelSize.width)
         streamConfiguration.height = Int(pixelSize.height)
@@ -97,7 +113,7 @@ final class RecordingSession: @unchecked Sendable {
             onError: { [weak self] in self?.onStreamError?($0) }
         )
         self.stream = stream
-        mouseTracker.start()
+        mouseTracker?.start()
         try await stream.start()
     }
 
@@ -107,13 +123,14 @@ final class RecordingSession: @unchecked Sendable {
             try? await stream.stop()
         }
         await deviceCapture?.stop()
-        mouseTracker.stop()
+        mouseTracker?.stop()
 
-        let (startTime, cameraWriter, failure) = await withCheckedContinuation { continuation in
+        let (startTime, screenWriter, cameraWriter, pixelSize, failure) = await withCheckedContinuation { continuation in
             queue.async {
-                self.screenWriter.finishInputs(at: stopTime)
+                self.acceptsCameraOnlyFrames = false
+                self.screenWriter?.finishInputs(at: stopTime)
                 self.cameraWriter?.finishInputs(at: stopTime)
-                continuation.resume(returning: (self.startTime, self.cameraWriter, self.failure))
+                continuation.resume(returning: (self.startTime, self.screenWriter, self.cameraWriter, self.pixelSize, self.failure))
             }
         }
 
@@ -121,7 +138,7 @@ final class RecordingSession: @unchecked Sendable {
             discardPackage()
             throw failure
         }
-        guard let startTime else {
+        guard let startTime, let screenWriter else {
             discardPackage()
             throw CaptureError.noFramesCaptured
         }
@@ -143,7 +160,7 @@ final class RecordingSession: @unchecked Sendable {
         }
 
         let duration = max(0, CMTimeSubtract(stopTime, startTime).seconds)
-        let mouse = mouseTracker.track(startingAt: startTime.seconds)
+        let mouse = mouseTracker?.track(startingAt: startTime.seconds) ?? .empty
         try ProjectStore.saveMouseTrack(mouse, to: packageURL)
         let zooms = AutoZoom.generate(from: mouse, duration: duration)
         let project = Project(
@@ -157,7 +174,7 @@ final class RecordingSession: @unchecked Sendable {
                 pixelWidth: Int(pixelSize.width),
                 pixelHeight: Int(pixelSize.height),
                 duration: duration,
-                sourceName: configuration.target.title
+                sourceName: configuration.target?.title ?? configuration.camera?.localizedName ?? "Camera"
             ),
             edits: .initial(duration: duration, zooms: zooms, hasCamera: cameraFile != nil)
         )
@@ -170,10 +187,11 @@ final class RecordingSession: @unchecked Sendable {
             try? await stream.stop()
         }
         await deviceCapture?.stop()
-        mouseTracker.stop()
+        mouseTracker?.stop()
         await withCheckedContinuation { continuation in
             queue.async {
-                self.screenWriter.cancel()
+                self.acceptsCameraOnlyFrames = false
+                self.screenWriter?.cancel()
                 self.cameraWriter?.cancel()
                 continuation.resume()
             }
@@ -190,9 +208,10 @@ final class RecordingSession: @unchecked Sendable {
               let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
         queue.async {
+            guard let screenWriter = self.screenWriter else { return }
             if self.startTime == nil {
                 do {
-                    try self.screenWriter.start(at: time)
+                    try screenWriter.start(at: time)
                 } catch {
                     self.fail(with: error)
                     return
@@ -200,16 +219,20 @@ final class RecordingSession: @unchecked Sendable {
                 self.startTime = time
                 self.startCameraWriterIfPossible()
             }
-            self.screenWriter.appendVideo(pixelBuffer, at: time)
+            screenWriter.appendVideo(pixelBuffer, at: time)
         }
     }
 
     private func handleCameraFrame(_ sampleBuffer: CMSampleBuffer) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         let time = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        let size = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
         queue.async {
+            if self.configuration.isCameraOnly {
+                self.appendCameraOnlyFrame(pixelBuffer, size: size, at: time)
+                return
+            }
             if self.cameraWriter == nil, !self.cameraWriterFailed, self.failure == nil {
-                let size = CGSize(width: CVPixelBufferGetWidth(pixelBuffer), height: CVPixelBufferGetHeight(pixelBuffer))
                 self.cameraWriter = try? MediaWriter(
                     url: self.packageURL.appendingPathComponent(ProjectStore.cameraFileName),
                     video: VideoSpec(size: size, frameRate: RecordingSession.cameraFrameRate, bitsPerPixel: RecordingSession.cameraBitsPerPixel),
@@ -223,14 +246,35 @@ final class RecordingSession: @unchecked Sendable {
         }
     }
 
+    private func appendCameraOnlyFrame(_ pixelBuffer: CVPixelBuffer, size: CGSize, at time: CMTime) {
+        guard acceptsCameraOnlyFrames, failure == nil else { return }
+        if screenWriter == nil {
+            do {
+                let writer = try MediaWriter(
+                    url: packageURL.appendingPathComponent(ProjectStore.screenFileName),
+                    video: VideoSpec(size: size, frameRate: RecordingSession.cameraFrameRate, bitsPerPixel: RecordingSession.cameraBitsPerPixel),
+                    audio: audioSettings
+                )
+                try writer.start(at: time)
+                screenWriter = writer
+                pixelSize = CaptureTarget.evenSize(size)
+                startTime = time
+            } catch {
+                fail(with: error)
+                return
+            }
+        }
+        screenWriter?.appendVideo(pixelBuffer, at: time)
+    }
+
     private func handleMicrophoneAudio(_ sampleBuffer: CMSampleBuffer) {
         guard let track = audioTracks.firstIndex(of: .microphone) else { return }
-        queue.async { self.screenWriter.appendAudio(sampleBuffer, track: track) }
+        queue.async { self.screenWriter?.appendAudio(sampleBuffer, track: track) }
     }
 
     private func handleSystemAudio(_ sampleBuffer: CMSampleBuffer) {
         guard let track = audioTracks.firstIndex(of: .systemAudio) else { return }
-        queue.async { self.screenWriter.appendAudio(sampleBuffer, track: track) }
+        queue.async { self.screenWriter?.appendAudio(sampleBuffer, track: track) }
     }
 
     private func startCameraWriterIfPossible() {

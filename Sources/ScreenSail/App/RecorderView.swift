@@ -12,12 +12,17 @@ struct RecorderView: View {
         @Bindable var recorder = recorder
         VStack(alignment: .leading, spacing: 18) {
             header
-            if recorder.hasScreenAccess {
-                sourceSection(recorder: $recorder)
-            } else {
+            sourceSection(recorder: $recorder)
+            if !recorder.hasScreenAccess, !recorder.isCameraOnly {
                 permissionCard
             }
             devicesSection(recorder: $recorder)
+            if recorder.usesCamera, let preview = recorder.previewCapture {
+                CameraPreview(session: preview.session)
+                    .frame(height: 180)
+                    .frame(maxWidth: .infinity)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
             recordButton
             if let message = recorder.errorMessage {
                 Text(message)
@@ -33,8 +38,13 @@ struct RecorderView: View {
         .onChange(of: recorder.phase) { previous, phase in
             guard previous == .idle, case .countdown = phase else { return }
             openWindow(id: RecordingPanelView.windowID)
+            if recorder.session?.deviceCapture?.hasCamera == true {
+                openWindow(id: CameraBubbleView.windowID)
+            }
             dismissWindow(id: RecorderView.windowID)
         }
+        .onChange(of: recorder.selectedCameraID) { recorder.updatePreview() }
+        .onChange(of: recorder.sourceKind) { Task { await recorder.sourceKindDidChange() } }
     }
 
     private var header: some View {
@@ -90,6 +100,9 @@ struct RecorderView: View {
             .labelsHidden()
 
             switch recorder.wrappedValue.sourceKind {
+            case .camera:
+                Text("Records only your camera, like a video message.")
+                    .foregroundStyle(.secondary)
             case .display:
                 Picker("Display", selection: recorder.selectedDisplayID) {
                     ForEach(recorder.wrappedValue.displays) { target in
@@ -115,18 +128,19 @@ struct RecorderView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Toggle("Camera", isOn: Binding(
-                    get: { recorder.wrappedValue.cameraEnabled },
+                    get: { recorder.wrappedValue.usesCamera },
                     set: { value in Task { await recorder.wrappedValue.setCameraEnabled(value) } }
                 ))
                 .toggleStyle(.switch)
                 .frame(width: 130, alignment: .leading)
+                .disabled(recorder.wrappedValue.isCameraOnly)
                 Picker("", selection: recorder.selectedCameraID) {
                     ForEach(recorder.wrappedValue.cameras, id: \.uniqueID) { device in
                         Text(device.localizedName).tag(Optional(device.uniqueID))
                     }
                 }
                 .labelsHidden()
-                .disabled(!recorder.wrappedValue.cameraEnabled)
+                .disabled(!recorder.wrappedValue.usesCamera)
             }
             HStack {
                 Toggle("Microphone", isOn: Binding(
@@ -145,6 +159,7 @@ struct RecorderView: View {
             }
             Toggle("System audio", isOn: recorder.systemAudioEnabled)
                 .toggleStyle(.switch)
+                .disabled(recorder.wrappedValue.isCameraOnly)
         }
         .disabled(!recorder.wrappedValue.isIdle)
     }

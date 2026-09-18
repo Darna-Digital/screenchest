@@ -25,6 +25,19 @@ struct ScreenSailApp: App {
             WindowPlacement(.top, size: content.sizeThatFits(.unspecified))
         }
 
+        Window("Camera", id: CameraBubbleView.windowID) {
+            CameraBubbleView()
+                .environment(recorder)
+        }
+        .windowStyle(.plain)
+        .windowLevel(.floating)
+        .windowResizability(.contentSize)
+        .windowBackgroundDragBehavior(.enabled)
+        .restorationBehavior(.disabled)
+        .defaultWindowPlacement { content, _ in
+            WindowPlacement(.bottomLeading, size: content.sizeThatFits(.unspecified))
+        }
+
         WindowGroup("Editor", for: URL.self) { $packageURL in
             if let packageURL {
                 EditorView(packageURL: packageURL)

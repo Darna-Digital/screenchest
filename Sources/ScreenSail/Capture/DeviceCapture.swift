@@ -6,6 +6,7 @@ final class DeviceCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     let session = AVCaptureSession()
     let hasCamera: Bool
     let hasMicrophone: Bool
+    let cameraID: String?
     var onVideo: SampleHandler?
     var onAudio: SampleHandler?
 
@@ -17,6 +18,7 @@ final class DeviceCapture: NSObject, AVCaptureVideoDataOutputSampleBufferDelegat
     init(camera: AVCaptureDevice?, microphone: AVCaptureDevice?) throws {
         hasCamera = camera != nil
         hasMicrophone = microphone != nil
+        cameraID = camera?.uniqueID
         super.init()
 
         session.beginConfiguration()

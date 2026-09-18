@@ -16,6 +16,7 @@ final class RecorderController {
     enum SourceKind: String, CaseIterable, Identifiable {
         case display = "Display"
         case window = "Window"
+        case camera = "Camera"
         var id: String { rawValue }
     }
 
@@ -40,6 +41,7 @@ final class RecorderController {
     var finishedProjectURL: URL?
     var recentProjects: [URL] = []
     private(set) var session: RecordingSession?
+    private(set) var previewCapture: DeviceCapture?
 
     @ObservationIgnored private var ownApplications: [SCRunningApplication] = []
     @ObservationIgnored private var recordingTask: Task<Void, Never>?
@@ -48,13 +50,19 @@ final class RecorderController {
         switch sourceKind {
         case .display: displays.first { $0.id == selectedDisplayID }
         case .window: windows.first { $0.id == selectedWindowID }
+        case .camera: nil
         }
     }
 
     var selectedCamera: AVCaptureDevice? { cameras.first { $0.uniqueID == selectedCameraID } }
     var selectedMicrophone: AVCaptureDevice? { microphones.first { $0.uniqueID == selectedMicrophoneID } }
     var isIdle: Bool { phase == .idle }
-    var canRecord: Bool { isIdle && hasScreenAccess && selectedTarget != nil }
+    var isCameraOnly: Bool { sourceKind == .camera }
+    var usesCamera: Bool { isCameraOnly || cameraEnabled }
+    var canRecord: Bool {
+        guard isIdle else { return false }
+        return isCameraOnly ? selectedCamera != nil : hasScreenAccess && selectedTarget != nil
+    }
 
     func refreshSources() async {
         hasScreenAccess = Permissions.hasScreenRecordingAccess()
@@ -120,6 +128,7 @@ final class RecorderController {
         }
         cameraEnabled = enabled
         refreshDevices()
+        updatePreview()
     }
 
     func setMicrophoneEnabled(_ enabled: Bool) async {
@@ -132,9 +141,32 @@ final class RecorderController {
         refreshDevices()
     }
 
+    func sourceKindDidChange() async {
+        if isCameraOnly, !(await Permissions.ensureAccess(to: .video)) {
+            errorMessage = CaptureError.cameraNotAllowed.localizedDescription
+        }
+        updatePreview()
+    }
+
+    func updatePreview() {
+        let wanted = isIdle && usesCamera ? selectedCamera : nil
+        if let previewCapture, previewCapture.cameraID == wanted?.uniqueID { return }
+        stopPreview()
+        guard let wanted, AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
+        previewCapture = try? DeviceCapture(camera: wanted, microphone: nil)
+        previewCapture?.start()
+    }
+
+    private func stopPreview() {
+        guard let previewCapture else { return }
+        self.previewCapture = nil
+        Task { await previewCapture.stop() }
+    }
+
     func startRecording() {
-        guard canRecord, let target = selectedTarget else { return }
+        guard canRecord else { return }
         errorMessage = nil
+        let target = selectedTarget
         recordingTask = Task { await run(target: target) }
     }
 
@@ -146,7 +178,7 @@ final class RecorderController {
         Task { await finish() }
     }
 
-    private func run(target: CaptureTarget) async {
+    private func run(target: CaptureTarget?) async {
         var microphone: AVCaptureDevice?
         if microphoneEnabled {
             if await Permissions.ensureAccess(to: .audio) {
@@ -158,7 +190,7 @@ final class RecorderController {
             }
         }
         var camera: AVCaptureDevice?
-        if cameraEnabled {
+        if usesCamera {
             if await Permissions.ensureAccess(to: .video) {
                 camera = selectedCamera
                 if camera == nil { errorMessage = CaptureError.cannotUseCamera.localizedDescription }
@@ -166,6 +198,13 @@ final class RecorderController {
                 cameraEnabled = false
                 errorMessage = CaptureError.cameraNotAllowed.localizedDescription
             }
+        }
+        if target == nil, camera == nil {
+            return
+        }
+        if let previewCapture {
+            self.previewCapture = nil
+            await previewCapture.stop()
         }
         let configuration = RecordingSession.Configuration(
             target: target,
@@ -198,6 +237,7 @@ final class RecorderController {
             await session.cancel()
             self.session = nil
             phase = .idle
+            updatePreview()
             if !(error is CancellationError) {
                 errorMessage = error.localizedDescription
             }
@@ -216,6 +256,7 @@ final class RecorderController {
         self.session = nil
         recentProjects = ProjectStore.listPackages()
         phase = .idle
+        updatePreview()
     }
 
     private func handleStreamError(_ error: Error) {

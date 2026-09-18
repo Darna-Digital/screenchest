@@ -2,7 +2,8 @@ APP_NAME = ScreenSail
 BUILD_DIR = build
 APP = $(BUILD_DIR)/$(APP_NAME).app
 CONTENTS = $(APP)/Contents
-SIGN_IDENTITY ?= -
+DEV_IDENTITY = ScreenSail Dev
+SIGN_IDENTITY ?= $(shell security find-identity -v -p codesigning 2>/dev/null | grep -q "\"$(DEV_IDENTITY)\"" && echo "$(DEV_IDENTITY)" || echo "-")
 
 .PHONY: all app run clean
 
@@ -16,7 +17,7 @@ app:
 	cp Resources/Info.plist "$(CONTENTS)/Info.plist"
 	printf 'APPL????' > "$(CONTENTS)/PkgInfo"
 	codesign --force --sign "$(SIGN_IDENTITY)" "$(APP)"
-	@echo "Built $(APP)"
+	@echo "Built $(APP) (signed with: $(SIGN_IDENTITY))"
 
 run: app
 	open "$(APP)"
