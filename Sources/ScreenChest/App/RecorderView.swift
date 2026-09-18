@@ -9,6 +9,7 @@ struct RecorderView: View {
     static let windowPadding: CGFloat = 28
 
     @Environment(RecorderController.self) private var recorder
+    @Environment(StudioLibrary.self) private var library
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -58,6 +59,7 @@ struct RecorderView: View {
             systemAudioButton
             ToolbarDivider()
             settingsMenu
+            studioButton
             recordButton
         }
         .padding(8)
@@ -194,7 +196,7 @@ struct RecorderView: View {
                     Text("No recordings yet")
                 }
                 ForEach(recorder.recentProjects.prefix(6), id: \.self) { url in
-                    Button(url.deletingPathExtension().lastPathComponent) { openWindow(value: url) }
+                    Button(url.deletingPathExtension().lastPathComponent) { openStudio(showing: url) }
                 }
             }
             Divider()
@@ -218,6 +220,26 @@ struct RecorderView: View {
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
         .foregroundStyle(.secondary)
+    }
+
+    private var studioButton: some View {
+        Button {
+            openStudio(showing: nil)
+        } label: {
+            Image(systemName: "film.stack")
+                .font(.system(size: 17, weight: .medium))
+                .frame(width: 40, height: 56)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(.secondary)
+        .help("Open Studio (⌘2)")
+    }
+
+    private func openStudio(showing url: URL?) {
+        if let url { library.open(url) }
+        openWindow(id: StudioView.windowID)
+        dismissWindow(id: RecorderView.windowID)
     }
 
     private var recordButton: some View {

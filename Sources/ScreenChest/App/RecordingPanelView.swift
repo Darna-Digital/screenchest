@@ -4,6 +4,7 @@ struct RecordingPanelView: View {
     static let windowID = "recording-panel"
 
     @Environment(RecorderController.self) private var recorder
+    @Environment(StudioLibrary.self) private var library
     @Environment(\.openWindow) private var openWindow
     @Environment(\.dismissWindow) private var dismissWindow
 
@@ -70,7 +71,8 @@ struct RecordingPanelView: View {
     private func leave() {
         if let url = recorder.finishedProjectURL {
             recorder.finishedProjectURL = nil
-            openWindow(value: url)
+            library.open(url)
+            openWindow(id: StudioView.windowID)
         } else {
             openWindow(id: RecorderView.windowID)
         }

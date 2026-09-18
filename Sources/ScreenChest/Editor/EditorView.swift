@@ -1,46 +1,7 @@
 import SwiftUI
 
 struct EditorView: View {
-    @Environment(\.dismissWindow) private var dismissWindow
-    @State private var packageURL: URL?
-    @State private var model: EditorModel?
-    @State private var loadError: String?
-
-    init(initialURL: URL?) {
-        _packageURL = State(initialValue: initialURL)
-    }
-
-    var body: some View {
-        Group {
-            if let model {
-                EditorContent(model: model)
-            } else if let loadError {
-                ContentUnavailableView("Couldn't open recording", systemImage: "exclamationmark.triangle", description: Text(loadError))
-            } else {
-                ProgressView("Opening recording…")
-            }
-        }
-        .navigationTitle(model?.project.name ?? packageURL?.deletingPathExtension().lastPathComponent ?? "Editor")
-        .onOpenURL { url in
-            if packageURL == nil { packageURL = url }
-        }
-        .onAppear { dismissWindow(id: RecorderView.windowID) }
-        .task(id: packageURL) {
-            guard let packageURL else { return }
-            do {
-                let model = try EditorModel(packageURL: packageURL)
-                self.model = model
-                await model.load()
-            } catch {
-                loadError = error.localizedDescription
-            }
-        }
-    }
-}
-
-private struct EditorContent: View {
     let model: EditorModel
-    @State private var inspectorShown = true
 
     var body: some View {
         VStack(spacing: 0) {
@@ -53,21 +14,6 @@ private struct EditorContent: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
-        .inspector(isPresented: $inspectorShown) {
-            InspectorView(model: model)
-                .inspectorColumnWidth(min: 280, ideal: 330, max: 440)
-        }
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button {
-                    inspectorShown.toggle()
-                } label: {
-                    Label("Inspector", systemImage: "sidebar.trailing")
-                }
-                .help("Show or hide the inspector")
-            }
-        }
-        .frame(minWidth: 980, minHeight: 640)
         .focusedSceneValue(\.editorModel, model)
         .onDisappear { model.saveNow() }
     }

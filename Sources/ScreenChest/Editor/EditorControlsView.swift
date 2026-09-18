@@ -2,22 +2,19 @@ import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct InspectorView: View {
+struct EditorControlSections: View {
     let model: EditorModel
 
     var body: some View {
-        Form {
-            zoomSection
-            backgroundSection
-            if model.hasCamera {
-                cameraSection
-            }
-            if model.hasMicrophone || model.hasSystemAudio {
-                audioSection
-            }
-            exportSection
+        zoomSection
+        backgroundSection
+        if model.hasCamera {
+            cameraSection
         }
-        .formStyle(.grouped)
+        if model.hasMicrophone || model.hasSystemAudio {
+            audioSection
+        }
+        exportSection
     }
 
     private var zoomSection: some View {

@@ -23,7 +23,7 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.video</string>
 	<key>LSMinimumSystemVersion</key>
-	<string>15.0</string>
+	<string>26.0</string>
 	<key>NSCameraUsageDescription</key>
 	<string>ScreenChest records your camera so you can appear in your recordings.</string>
 	<key>NSMicrophoneUsageDescription</key>

@@ -252,6 +252,16 @@ final class EditorModel {
         try? ProjectStore.save(project, to: packageURL)
     }
 
+    func close() {
+        saveNow()
+        exportTask?.cancel()
+        player.pause()
+        if let timeObserver { player.removeTimeObserver(timeObserver) }
+        timeObserver = nil
+        statusObservation = nil
+        player.replaceCurrentItem(with: nil)
+    }
+
     private func applyEdits() {
         guard let playerItem, let composition else { return }
         playerItem.videoComposition = makeVideoComposition(preview: true)

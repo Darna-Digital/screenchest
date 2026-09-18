@@ -7,6 +7,8 @@ struct RecorderCommands: Commands {
         CommandGroup(replacing: .newItem) {
             Button("Show Recorder") { openWindow(id: RecorderView.windowID) }
                 .keyboardShortcut("1", modifiers: .command)
+            Button("Show Studio") { openWindow(id: StudioView.windowID) }
+                .keyboardShortcut("2", modifiers: .command)
         }
     }
 }

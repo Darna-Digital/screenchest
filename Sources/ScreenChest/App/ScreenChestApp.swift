@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct ScreenChestApp: App {
     @State private var recorder = RecorderController()
+    @State private var library = StudioLibrary()
 
     var body: some Scene {
         Window("ScreenChest", id: RecorderView.windowID) {
             RecorderView()
                 .environment(recorder)
+                .environment(library)
         }
         .windowStyle(.plain)
         .windowLevel(.floating)
@@ -24,6 +26,7 @@ struct ScreenChestApp: App {
         Window("Recording", id: RecordingPanelView.windowID) {
             RecordingPanelView()
                 .environment(recorder)
+                .environment(library)
         }
         .windowStyle(.hiddenTitleBar)
         .windowLevel(.floating)
@@ -47,9 +50,12 @@ struct ScreenChestApp: App {
             WindowPlacement(.bottomLeading, size: content.sizeThatFits(.unspecified))
         }
 
-        WindowGroup("Editor", for: URL.self) { $packageURL in
-            EditorView(initialURL: packageURL)
+        Window("Studio", id: StudioView.windowID) {
+            StudioView()
+                .environment(library)
         }
+        .windowStyle(.hiddenTitleBar)
+        .windowToolbarStyle(.unified)
         .handlesExternalEvents(matching: [ProjectStore.packageExtension])
         .defaultSize(width: 1280, height: 840)
         .commands {
