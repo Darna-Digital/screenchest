@@ -106,7 +106,15 @@ struct EditorControlSections: View {
                 }
             }
             let canvas = RenderPlan.canvasSize(for: model.project.recording.pixelSize, resolution: model.edits.output.resolution)
-            Text("\(Int(canvas.width)) × \(Int(canvas.height)) · \(TimeFormatting.precise(model.edits.trimEnd - model.edits.trimStart)) · 60 fps")
+            let duration = model.edits.trimEnd - model.edits.trimStart
+            let estimatedBytes = ExportEstimate.fileSizeBytes(
+                canvas: canvas,
+                frameRate: EditorModel.previewFrameRate,
+                duration: duration,
+                codec: model.edits.output.codec,
+                hasAudio: model.hasMicrophone || model.hasSystemAudio
+            )
+            Text("\(Int(canvas.width)) × \(Int(canvas.height)) · \(TimeFormatting.precise(duration)) · \(EditorModel.previewFrameRate) fps · \(ExportEstimate.label(bytes: estimatedBytes))")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -141,7 +149,7 @@ struct EditorControlSections: View {
         panel.allowedContentTypes = [.mpeg4Movie]
         panel.canCreateDirectories = true
         panel.directoryURL = ProjectStore.libraryURL
-        panel.nameFieldStringValue = "\(model.project.name).mp4"
+        panel.nameFieldStringValue = "\(model.name).mp4"
         guard panel.runModal() == .OK, let url = panel.url else { return }
         model.export(to: url)
     }

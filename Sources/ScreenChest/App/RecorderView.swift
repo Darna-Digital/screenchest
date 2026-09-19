@@ -4,9 +4,7 @@ import SwiftUI
 
 struct RecorderView: View {
     static let windowID = "recorder"
-    static let barCornerRadius: CGFloat = 26
     static let itemCornerRadius: CGFloat = 12
-    static let windowPadding: CGFloat = 28
 
     @Environment(RecorderController.self) private var recorder
     @Environment(StudioLibrary.self) private var library
@@ -23,7 +21,7 @@ struct RecorderView: View {
                 messageRow(message)
             }
         }
-        .padding(RecorderView.windowPadding)
+        .padding(FloatingPanel.windowPadding)
         .environment(\.colorScheme, .dark)
         .task { await recorder.refreshSources() }
         .onAppear {
@@ -61,14 +59,7 @@ struct RecorderView: View {
             recordButton
         }
         .padding(8)
-        .background(.black.opacity(0.55))
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: RecorderView.barCornerRadius, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: RecorderView.barCornerRadius, style: .continuous)
-                .strokeBorder(.white.opacity(0.12), lineWidth: 1)
-        )
-        .shadow(color: .black.opacity(0.28), radius: 10, y: 4)
+        .floatingPanel()
         .movesWindowOnDrag()
     }
 
@@ -241,23 +232,13 @@ struct RecorderView: View {
     }
 
     private var recordButton: some View {
-        Button {
+        ProminentPanelButton(
+            title: "Record",
+            systemImage: "circle.fill",
+            tint: recorder.canRecord ? .red : .gray.opacity(0.5)
+        ) {
             recorder.startRecording()
-        } label: {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(.white)
-                    .frame(width: 12, height: 12)
-                Text("Record")
-                    .fontWeight(.semibold)
-                    .fixedSize()
-            }
-            .foregroundStyle(.white)
-            .padding(.horizontal, 18)
-            .frame(height: 44)
-            .background(recorder.canRecord ? Color.red : Color.gray.opacity(0.5), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .buttonStyle(.plain)
         .disabled(!recorder.canRecord)
         .keyboardShortcut("r", modifiers: .command)
         .help(recorder.canRecord ? "Start recording (⌘R)" : "Choose a source first")
@@ -280,9 +261,7 @@ struct RecorderView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .background(.black.opacity(0.55))
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .floatingPanel(cornerRadius: 18)
     }
 
     private func messageRow(_ message: String) -> some View {
@@ -303,9 +282,7 @@ struct RecorderView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .background(.black.opacity(0.55))
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .floatingPanel(cornerRadius: 18)
     }
 
     private func syncCameraBubble() {

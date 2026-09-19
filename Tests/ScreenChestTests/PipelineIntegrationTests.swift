@@ -33,11 +33,11 @@ final class PipelineIntegrationTests: XCTestCase {
     private func makeProject() -> Project {
         let mouse = ProjectStore.loadMouseTrack(from: packageURL, fileName: ProjectStore.mouseFileName)
         var edits = Edits.initial(duration: Self.duration, zooms: AutoZoom.generate(from: mouse, duration: Self.duration), hasCamera: true)
+        edits.backgroundPresetID = BackgroundPreset.gradients[0].id
         edits.trimStart = 0.5
         edits.trimEnd = 2.5
         edits.output.resolution = .source
         return Project(
-            name: "Pipeline",
             createdAt: Date(),
             recording: RecordingInfo(
                 screenFile: ProjectStore.screenFileName,

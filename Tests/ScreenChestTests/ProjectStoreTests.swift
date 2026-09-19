@@ -11,7 +11,6 @@ final class ProjectStoreTests: XCTestCase {
 
         let zoom = ZoomSegment(id: UUID(), start: 1, end: 4, scale: 2.5, anchor: NormalizedPoint(x: 0.2, y: 0.8), followsCursor: false)
         let project = Project(
-            name: "Round trip",
             createdAt: Date(timeIntervalSince1970: 1_700_000_000),
             recording: RecordingInfo(
                 screenFile: "screen.mov",
@@ -32,6 +31,28 @@ final class ProjectStoreTests: XCTestCase {
         try ProjectStore.saveMouseTrack(mouse, to: packageURL)
         XCTAssertEqual(ProjectStore.loadMouseTrack(from: packageURL, fileName: "mouse.json"), mouse)
         XCTAssertEqual(ProjectStore.loadMouseTrack(from: packageURL, fileName: "missing.json"), .empty)
+    }
+
+    func testRenameMovesPackageAndRejectsBadNames() throws {
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("ScreenChestTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let packageURL = folder.appendingPathComponent("Original").appendingPathExtension(ProjectStore.packageExtension)
+        let takenURL = folder.appendingPathComponent("Taken").appendingPathExtension(ProjectStore.packageExtension)
+        try ProjectStore.createPackage(at: packageURL)
+        try ProjectStore.createPackage(at: takenURL)
+        let identity = ProjectStore.fileIdentity(of: packageURL)
+
+        XCTAssertThrowsError(try ProjectStore.rename(packageURL, to: "   "))
+        XCTAssertThrowsError(try ProjectStore.rename(packageURL, to: "a/b"))
+        XCTAssertThrowsError(try ProjectStore.rename(packageURL, to: "Taken"))
+        XCTAssertEqual(try ProjectStore.rename(packageURL, to: "Original"), packageURL)
+
+        let renamed = try ProjectStore.rename(packageURL, to: " Demo walkthrough ")
+        XCTAssertEqual(ProjectStore.name(of: renamed), "Demo walkthrough")
+        XCTAssertEqual(renamed.pathExtension, ProjectStore.packageExtension)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: packageURL.path))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: renamed.path))
+        XCTAssertEqual(ProjectStore.fileIdentity(of: renamed), identity)
     }
 
     func testEditsDecodeWithoutTrimKeys() throws {

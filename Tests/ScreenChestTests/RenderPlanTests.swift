@@ -4,9 +4,9 @@ import XCTest
 final class RenderPlanTests: XCTestCase {
     private func project(width: Int, height: Int, camera: Bool) -> Project {
         var edits = Edits.initial(duration: 10, zooms: [], hasCamera: camera)
+        edits.backgroundPresetID = BackgroundPreset.gradients[0].id
         edits.padding = 0.1
         return Project(
-            name: "Test",
             createdAt: Date(),
             recording: RecordingInfo(
                 screenFile: "screen.mov",

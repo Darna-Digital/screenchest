@@ -164,7 +164,6 @@ final class RecordingSession: @unchecked Sendable {
         try ProjectStore.saveMouseTrack(mouse, to: packageURL)
         let zooms = AutoZoom.generate(from: mouse, duration: duration)
         let project = Project(
-            name: packageURL.deletingPathExtension().lastPathComponent,
             createdAt: Date(),
             recording: RecordingInfo(
                 screenFile: ProjectStore.screenFileName,

@@ -9,14 +9,17 @@ struct RecordingPanelView: View {
     @Environment(\.dismissWindow) private var dismissWindow
 
     var body: some View {
-        HStack(spacing: 14) {
+        HStack(spacing: 12) {
             content
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 12)
-        .frame(minWidth: 300)
-        .background(.ultraThinMaterial)
+        .padding(.leading, 20)
+        .padding(.trailing, 8)
+        .padding(.vertical, 8)
+        .frame(minWidth: 280)
+        .floatingPanel()
         .movesWindowOnDrag()
+        .padding(FloatingPanel.windowPadding)
+        .environment(\.colorScheme, .dark)
         .onAppear {
             if recorder.phase == .idle { leave() }
         }
@@ -30,41 +33,42 @@ struct RecordingPanelView: View {
         switch recorder.phase {
         case .countdown(let remaining):
             Text("\(remaining)")
-                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .frame(width: 36)
+                .contentTransition(.numericText(countsDown: true))
+                .animation(.snappy, value: remaining)
+                .frame(width: 40, height: 40)
+                .background(Color.white.opacity(0.12), in: Circle())
             Text("Starting…")
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
-            Spacer(minLength: 8)
-            Button("Cancel") { recorder.cancelCountdown() }
+            Spacer(minLength: 16)
+            SubtlePanelButton(title: "Cancel") { recorder.cancelCountdown() }
                 .keyboardShortcut(.cancelAction)
         case .recording(let start):
-            Circle()
-                .fill(.red)
-                .frame(width: 12, height: 12)
+            RecordingIndicator()
             TimelineView(.periodic(from: start, by: 1)) { context in
                 Text(TimeFormatting.clock(context.date.timeIntervalSince(start)))
-                    .font(.system(size: 22, weight: .semibold, design: .rounded))
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
                     .monospacedDigit()
             }
-            Spacer(minLength: 8)
-            Button {
-                recorder.stopRecording()
-            } label: {
-                Label("Stop", systemImage: "stop.fill")
-                    .fontWeight(.semibold)
-            }
-            .buttonStyle(.borderedProminent)
-            .tint(.red)
-            .keyboardShortcut(.cancelAction)
+            Spacer(minLength: 16)
+            ProminentPanelButton(title: "Stop", systemImage: "stop.fill") { recorder.stopRecording() }
+                .keyboardShortcut(.cancelAction)
+                .help("Stop recording (Esc)")
         case .finishing:
             ProgressView()
                 .controlSize(.small)
+                .frame(width: 40, height: 40)
             Text("Saving recording…")
+                .font(.system(size: 15, weight: .medium))
                 .foregroundStyle(.secondary)
+                .padding(.trailing, 12)
+                .frame(height: 44)
         case .idle:
             Text("Ready")
                 .foregroundStyle(.secondary)
+                .frame(height: 44)
         }
     }
 
@@ -77,5 +81,21 @@ struct RecordingPanelView: View {
             openWindow(id: RecorderView.windowID)
         }
         dismissWindow(id: RecordingPanelView.windowID)
+    }
+}
+
+private struct RecordingIndicator: View {
+    @State private var dimmed = false
+
+    var body: some View {
+        Circle()
+            .fill(.red)
+            .frame(width: 12, height: 12)
+            .shadow(color: .red.opacity(0.7), radius: 5)
+            .opacity(dimmed ? 0.35 : 1)
+            .frame(width: 40, height: 40)
+            .onAppear {
+                withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) { dimmed = true }
+            }
     }
 }

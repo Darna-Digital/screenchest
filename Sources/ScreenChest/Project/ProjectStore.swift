@@ -1,5 +1,24 @@
 import Foundation
 
+struct FileIdentity: Hashable {
+    let device: Int
+    let inode: Int
+}
+
+enum RenameError: LocalizedError {
+    case emptyName
+    case invalidCharacters
+    case alreadyExists(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyName: "The name can't be empty."
+        case .invalidCharacters: "The name can't contain “/” or “:”."
+        case .alreadyExists(let name): "A recording named “\(name)” already exists."
+        }
+    }
+}
+
 enum ProjectStore {
     static let packageExtension = "screenchest"
     static let projectFileName = "project.json"
@@ -22,6 +41,32 @@ enum ProjectStore {
 
     static func createPackage(at url: URL) throws {
         try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+    }
+
+    static func name(of packageURL: URL) -> String {
+        packageURL.deletingPathExtension().lastPathComponent
+    }
+
+    static func fileIdentity(of url: URL) -> FileIdentity? {
+        guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+              let device = attributes[.systemNumber] as? Int,
+              let inode = attributes[.systemFileNumber] as? Int else { return nil }
+        return FileIdentity(device: device, inode: inode)
+    }
+
+    @discardableResult
+    static func rename(_ packageURL: URL, to newName: String) throws -> URL {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { throw RenameError.emptyName }
+        guard !trimmed.contains("/"), !trimmed.contains(":") else { throw RenameError.invalidCharacters }
+        guard trimmed != name(of: packageURL) else { return packageURL }
+        let destination = packageURL.deletingLastPathComponent()
+            .appendingPathComponent(trimmed)
+            .appendingPathExtension(packageExtension)
+        let onlyChangesCase = destination.lastPathComponent.caseInsensitiveCompare(packageURL.lastPathComponent) == .orderedSame
+        guard onlyChangesCase || !FileManager.default.fileExists(atPath: destination.path) else { throw RenameError.alreadyExists(trimmed) }
+        try FileManager.default.moveItem(at: packageURL, to: destination)
+        return destination
     }
 
     static func save(_ project: Project, to packageURL: URL) throws {

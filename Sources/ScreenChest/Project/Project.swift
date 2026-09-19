@@ -2,7 +2,6 @@ import Foundation
 import CoreGraphics
 
 struct Project: Codable, Equatable {
-    var name: String
     var createdAt: Date
     var recording: RecordingInfo
     var edits: Edits
@@ -44,7 +43,7 @@ struct Edits: Codable, Equatable {
             trimStart: 0,
             trimEnd: duration,
             zooms: zooms,
-            backgroundPresetID: BackgroundPreset.gradients[0].id,
+            backgroundPresetID: BackgroundPreset.none.id,
             padding: 0.06,
             cornerRadius: 0.02,
             shadow: true,

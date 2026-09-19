@@ -54,6 +54,7 @@ final class EditorModel {
         mouse = ProjectStore.loadMouseTrack(from: packageURL, fileName: project.recording.mouseFile)
     }
 
+    var name: String { ProjectStore.name(of: packageURL) }
     var edits: Edits { project.edits }
     var duration: Double { project.recording.duration }
     var hasCamera: Bool { project.recording.cameraFile != nil }

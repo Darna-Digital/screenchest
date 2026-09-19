@@ -28,7 +28,7 @@ struct ScreenChestApp: App {
                 .environment(recorder)
                 .environment(library)
         }
-        .windowStyle(.hiddenTitleBar)
+        .windowStyle(.plain)
         .windowLevel(.floating)
         .windowResizability(.contentSize)
         .windowBackgroundDragBehavior(.enabled)
