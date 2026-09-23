@@ -14,7 +14,7 @@ struct RecorderView: View {
     var body: some View {
         VStack(spacing: 10) {
             toolbar
-            if !recorder.hasScreenAccess, !recorder.isCameraOnly {
+            if !recorder.hasScreenAccess {
                 permissionRow
             }
             if let message = recorder.errorMessage {
@@ -39,7 +39,6 @@ struct RecorderView: View {
             dismissWindow(id: RecorderView.windowID)
         }
         .onChange(of: recorder.selectedCameraID) { recorder.updatePreview() }
-        .onChange(of: recorder.sourceKind) { Task { await recorder.sourceKindDidChange() } }
     }
 
     private var toolbar: some View {
@@ -110,19 +109,11 @@ struct RecorderView: View {
         .menuStyle(.button)
         .buttonStyle(.plain)
         .menuIndicator(.hidden)
-
-        Button {
-            recorder.sourceKind = .camera
-        } label: {
-            SourceLabel(systemImage: "web.camera", title: "Camera", isSelected: recorder.sourceKind == .camera)
-        }
-        .buttonStyle(.plain)
     }
 
     private var cameraMenu: some View {
         Menu {
             Button("No camera") { Task { await recorder.setCameraEnabled(false) } }
-                .disabled(recorder.isCameraOnly)
             Divider()
             ForEach(recorder.cameras, id: \.uniqueID) { device in
                 Button(device.localizedName) {
@@ -132,9 +123,9 @@ struct RecorderView: View {
             }
         } label: {
             DeviceLabel(
-                systemImage: recorder.usesCamera ? "video" : "video.slash",
-                title: recorder.usesCamera ? (recorder.selectedCamera?.localizedName ?? "No camera") : "No camera",
-                isActive: recorder.usesCamera
+                systemImage: recorder.cameraEnabled ? "video" : "video.slash",
+                title: recorder.cameraEnabled ? (recorder.selectedCamera?.localizedName ?? "No camera") : "No camera",
+                isActive: recorder.cameraEnabled
             )
         }
         .menuStyle(.button)
@@ -169,13 +160,12 @@ struct RecorderView: View {
             recorder.systemAudioEnabled.toggle()
         } label: {
             DeviceLabel(
-                systemImage: recorder.systemAudioEnabled && !recorder.isCameraOnly ? "speaker.wave.2" : "speaker.slash",
-                title: recorder.systemAudioEnabled && !recorder.isCameraOnly ? "System audio" : "No system audio",
-                isActive: recorder.systemAudioEnabled && !recorder.isCameraOnly
+                systemImage: recorder.systemAudioEnabled ? "speaker.wave.2" : "speaker.slash",
+                title: recorder.systemAudioEnabled ? "System audio" : "No system audio",
+                isActive: recorder.systemAudioEnabled
             )
         }
         .buttonStyle(.plain)
-        .disabled(recorder.isCameraOnly)
     }
 
     private var settingsMenu: some View {
@@ -295,6 +285,8 @@ struct RecorderView: View {
 }
 
 private struct SourceLabel: View {
+    static let width: CGFloat = 84
+
     let systemImage: String
     let title: String
     let isSelected: Bool
@@ -304,13 +296,15 @@ private struct SourceLabel: View {
             Image(systemName: systemImage)
                 .font(.system(size: 22, weight: .regular))
                 .frame(height: 26)
-            Text(DeviceLabel.shortened(title))
+            Text(title)
                 .font(.system(size: 11))
                 .lineLimit(1)
-                .fixedSize()
+                .truncationMode(.tail)
+                .padding(.horizontal, 6)
         }
         .foregroundStyle(isSelected ? .primary : .secondary)
-        .frame(minWidth: 76)
+        .frame(width: SourceLabel.width)
+        .help(title)
         .frame(height: 56)
         .background(isSelected ? Color.white.opacity(0.14) : Color.clear, in: RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))
         .contentShape(RoundedRectangle(cornerRadius: RecorderView.itemCornerRadius, style: .continuous))

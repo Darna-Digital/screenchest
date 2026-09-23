@@ -1,6 +1,13 @@
 import AppKit
 import SwiftUI
 
+private extension Color {
+    static let trimmedOut = Color(nsColor: NSColor(name: nil) { appearance in
+        let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        return .black.withAlphaComponent(isDark ? 0.35 : 0.06)
+    })
+}
+
 struct TimeScale {
     let pixelsPerSecond: CGFloat
     let width: CGFloat
@@ -96,7 +103,7 @@ private struct ClipRow: View {
         ZStack(alignment: .topLeading) {
             RoundedRectangle(cornerRadius: 6)
                 .fill(Color(nsColor: .controlBackgroundColor))
-                .overlay(Rectangle().fill(.black.opacity(0.35)))
+                .overlay(Rectangle().fill(Color.trimmedOut))
             ZStack {
                 RoundedRectangle(cornerRadius: 5)
                     .fill(Color.primary.opacity(0.12))
@@ -169,11 +176,11 @@ private struct ZoomRow: View {
                 ZoomBlock(model: model, segment: segment, isSelected: segment.id == model.selectedZoomID, scale: scale)
             }
             Rectangle()
-                .fill(.black.opacity(0.35))
+                .fill(Color.trimmedOut)
                 .frame(width: max(0, scale.x(model.edits.trimStart)), height: EditorTimeline.zoomRowHeight)
                 .allowsHitTesting(false)
             Rectangle()
-                .fill(.black.opacity(0.35))
+                .fill(Color.trimmedOut)
                 .frame(width: max(0, scale.width - scale.x(model.edits.trimEnd)), height: EditorTimeline.zoomRowHeight)
                 .offset(x: scale.x(model.edits.trimEnd))
                 .allowsHitTesting(false)

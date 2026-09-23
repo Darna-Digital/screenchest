@@ -16,7 +16,6 @@ final class RecorderController {
     enum SourceKind: String, CaseIterable, Identifiable {
         case display = "Display"
         case window = "Window"
-        case camera = "Camera"
         var id: String { rawValue }
     }
 
@@ -51,7 +50,6 @@ final class RecorderController {
         switch sourceKind {
         case .display: displays.first { $0.id == selectedDisplayID }
         case .window: windows.first { $0.id == selectedWindowID }
-        case .camera: nil
         }
     }
 
@@ -62,11 +60,8 @@ final class RecorderController {
         if let capture = session?.deviceCapture, capture.hasCamera { return capture.session }
         return previewCapture?.session
     }
-    var isCameraOnly: Bool { sourceKind == .camera }
-    var usesCamera: Bool { isCameraOnly || cameraEnabled }
     var canRecord: Bool {
-        guard isIdle else { return false }
-        return isCameraOnly ? selectedCamera != nil : hasScreenAccess && selectedTarget != nil
+        isIdle && hasScreenAccess && selectedTarget != nil
     }
 
     func refreshSources() async {
@@ -146,15 +141,8 @@ final class RecorderController {
         refreshDevices()
     }
 
-    func sourceKindDidChange() async {
-        if isCameraOnly, !(await Permissions.ensureAccess(to: .video)) {
-            errorMessage = CaptureError.cameraNotAllowed.localizedDescription
-        }
-        updatePreview()
-    }
-
     func updatePreview() {
-        let wanted = isIdle && usesCamera ? selectedCamera : nil
+        let wanted = isIdle && cameraEnabled ? selectedCamera : nil
         if let previewCapture, previewCapture.cameraID == wanted?.uniqueID { return }
         stopPreview()
         guard let wanted, AVCaptureDevice.authorizationStatus(for: .video) == .authorized else { return }
@@ -171,7 +159,7 @@ final class RecorderController {
     func startRecording() {
         guard canRecord else { return }
         errorMessage = nil
-        let target = selectedTarget
+        guard let target = selectedTarget else { return }
         recordingTask = Task { await run(target: target) }
     }
 
@@ -183,7 +171,7 @@ final class RecorderController {
         Task { await finish() }
     }
 
-    private func run(target: CaptureTarget?) async {
+    private func run(target: CaptureTarget) async {
         var microphone: AVCaptureDevice?
         if microphoneEnabled {
             if await Permissions.ensureAccess(to: .audio) {
@@ -195,7 +183,7 @@ final class RecorderController {
             }
         }
         var camera: AVCaptureDevice?
-        if usesCamera {
+        if cameraEnabled {
             if await Permissions.ensureAccess(to: .video) {
                 camera = selectedCamera
                 if camera == nil { errorMessage = CaptureError.cannotUseCamera.localizedDescription }
@@ -203,9 +191,6 @@ final class RecorderController {
                 cameraEnabled = false
                 errorMessage = CaptureError.cameraNotAllowed.localizedDescription
             }
-        }
-        if target == nil, camera == nil {
-            return
         }
         let configuration = RecordingSession.Configuration(
             target: target,
@@ -264,8 +249,8 @@ final class RecorderController {
         phase = .idle
     }
 
-    private func cameraCornerNearestBubble(for target: CaptureTarget?) -> CameraStyle.Corner {
-        guard let target, let bubble = cameraBubbleWindow?.frame, let primaryScreen = NSScreen.screens.first else { return .bottomRight }
+    private func cameraCornerNearestBubble(for target: CaptureTarget) -> CameraStyle.Corner {
+        guard let bubble = cameraBubbleWindow?.frame, let primaryScreen = NSScreen.screens.first else { return .bottomRight }
         let bubbleCenter = CGPoint(x: bubble.midX, y: primaryScreen.frame.height - bubble.midY)
         let area = target.currentFrame()
         let isLeft = bubbleCenter.x < area.midX
