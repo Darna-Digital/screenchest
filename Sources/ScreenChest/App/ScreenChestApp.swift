@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct ScreenChestApp: App {
+    @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @State private var recorder = RecorderController()
     @State private var library = StudioLibrary()
 

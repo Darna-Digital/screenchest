@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds build/ScreenChest.app from scratch: release binary via SwiftPM, the app
-# icon rendered from Resources/AppIcon/AppIcon.svg, Info.plist, code signature.
+# icon compiled from Resources/ScreenChest.icon, Info.plist, code signature.
 #
 #   scripts/build-app.sh                       # sign with "ScreenChest Dev" if present, else ad-hoc
 #   SIGN_IDENTITY="My Cert" scripts/build-app.sh
@@ -13,10 +13,10 @@ app_name="ScreenChest"
 build_dir="$project_dir/build"
 app="$build_dir/$app_name.app"
 contents="$app/Contents"
-icon_svg="$project_dir/Resources/AppIcon/AppIcon.svg"
+icon_bundle="$project_dir/Resources/ScreenChest.icon"
+icon_fallback_dir="$project_dir/Resources/icons"
 icon_renderer="$project_dir/scripts/render-icon.swift"
-iconset="$build_dir/AppIcon.iconset"
-icns="$build_dir/AppIcon.icns"
+icon_build="$build_dir/icon"
 dev_identity="ScreenChest Dev"
 
 resolve_sign_identity() {
@@ -29,8 +29,68 @@ resolve_sign_identity() {
   fi
 }
 
+icon_sources_newer_than() {
+  [[ -n "$(find "$icon_bundle" "$icon_fallback_dir" "$icon_renderer" "$0" -type f -newer "$1" -print -quit)" ]]
+}
+
 icon_is_current() {
-  [[ -f "$icns" && "$icns" -nt "$icon_svg" && "$icns" -nt "$icon_renderer" ]]
+  [[ -f "$icon_build/$app_name.icns" && -f "$icon_build/$app_name-dark.icns" ]] \
+    && ! icon_sources_newer_than "$icon_build/$app_name.icns"
+}
+
+compile_icon() {
+  xcrun actool "$1" \
+    --compile "$2" \
+    --platform macosx \
+    --minimum-deployment-target 26.0 \
+    --app-icon "$app_name" \
+    --include-all-app-icons \
+    --output-partial-info-plist "$icon_build/partial.plist" >/dev/null 2>&1
+}
+
+# macOS shows an Icon Composer icon's dark rendering only under the "Dark" icon
+# style, not merely in dark mode, so DockIcon swaps in the dark .icns itself:
+# the same bundle compiled again with its dark fills promoted to the default.
+promote_dark_fills() {
+  python3 - "$1" "$2" <<'PY'
+import json, sys
+def promote_dark(node):
+    if isinstance(node, dict):
+        fills = node.get("fill-specializations")
+        if fills:
+            dark = next((f for f in fills if f.get("appearance") == "dark"), None)
+            if dark:
+                node["fill-specializations"] = [{"value": dark["value"]}]
+        for child in node.values():
+            promote_dark(child)
+    elif isinstance(node, list):
+        for child in node:
+            promote_dark(child)
+icon = json.load(open(sys.argv[1]))
+promote_dark(icon)
+json.dump(icon, open(sys.argv[2], "w"), indent=2)
+PY
+}
+
+svg_to_icns() {
+  local iconset="$icon_build/iconset/$(basename "$2" .icns).iconset"
+  mkdir -p "$iconset"
+  for points in 16 32 128 256 512; do
+    swift "$icon_renderer" "$1" "$iconset/icon_${points}x${points}.png" "$points"
+    swift "$icon_renderer" "$1" "$iconset/icon_${points}x${points}@2x.png" "$((points * 2))"
+  done
+  iconutil --convert icns --output "$2" "$iconset"
+}
+
+compile_icons_with_actool() {
+  local dark_source="$icon_build/dark-source/$app_name.icon"
+  mkdir -p "$icon_build/light" "$icon_build/dark" "$dark_source"
+  compile_icon "$icon_bundle" "$icon_build/light" || return 1
+  cp -R "$icon_bundle/Assets" "$dark_source/"
+  promote_dark_fills "$icon_bundle/icon.json" "$dark_source/icon.json"
+  compile_icon "$dark_source" "$icon_build/dark"
+  mv "$icon_build/light/$app_name.icns" "$icon_build/light/Assets.car" "$icon_build/"
+  mv "$icon_build/dark/$app_name.icns" "$icon_build/$app_name-dark.icns"
 }
 
 render_icon() {
@@ -38,15 +98,14 @@ render_icon() {
     echo "→ app icon up to date"
     return
   fi
-  echo "→ rendering app icon from ${icon_svg#"$project_dir"/}"
-  rm -rf "$iconset"
-  mkdir -p "$iconset"
-  for points in 16 32 128 256 512; do
-    swift "$icon_renderer" "$icon_svg" "$iconset/icon_${points}x${points}.png" "$points"
-    swift "$icon_renderer" "$icon_svg" "$iconset/icon_${points}x${points}@2x.png" "$((points * 2))"
-  done
-  iconutil --convert icns --output "$icns" "$iconset"
-  rm -rf "$iconset"
+  echo "→ compiling app icon from ${icon_bundle#"$project_dir"/}"
+  rm -rf "$build_dir/icon"
+  mkdir -p "$icon_build"
+  if ! compile_icons_with_actool; then
+    echo "⚠ actool unavailable (it ships with Xcode); rendering the flat fallback icons"
+    svg_to_icns "$icon_fallback_dir/screenchest-icon-light.svg" "$icon_build/$app_name.icns"
+    svg_to_icns "$icon_fallback_dir/screenchest-icon-dark.svg" "$icon_build/$app_name-dark.icns"
+  fi
 }
 
 build_binary() {
@@ -60,7 +119,10 @@ assemble_bundle() {
   mkdir -p "$contents/MacOS" "$contents/Resources"
   cp ".build/release/$app_name" "$contents/MacOS/$app_name"
   cp "Resources/Info.plist" "$contents/Info.plist"
-  cp "$icns" "$contents/Resources/AppIcon.icns"
+  cp "$icon_build/$app_name.icns" "$icon_build/$app_name-dark.icns" "$contents/Resources/"
+  if [[ -f "$icon_build/Assets.car" ]]; then
+    cp "$icon_build/Assets.car" "$contents/Resources/"
+  fi
   printf 'APPL????' > "$contents/PkgInfo"
 }
 

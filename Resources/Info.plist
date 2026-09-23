@@ -9,7 +9,9 @@
 	<key>CFBundleExecutable</key>
 	<string>ScreenChest</string>
 	<key>CFBundleIconFile</key>
-	<string>AppIcon</string>
+	<string>ScreenChest</string>
+	<key>CFBundleIconName</key>
+	<string>ScreenChest</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.darnadigital.screenchest</string>
 	<key>CFBundleInfoDictionaryVersion</key>
