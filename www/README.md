@@ -4,9 +4,9 @@ The ScreenChest marketing site, a TanStack Start app on Cloudflare Workers.
 Its structure and styling mirror reviewer.sh.
 
 ```bash
-pnpm dev     # the site on :41842
-pnpm build   # dist/client (assets) and dist/server (the Worker)
-pnpm deploy  # vite build, then wrangler deploy
+pnpm dev         # the site on :41842
+pnpm build       # dist/client (assets) and dist/server (the Worker)
+pnpm run deploy  # vite build, then wrangler deploy
 ```
 
 ## Screenshots
@@ -29,6 +29,12 @@ Set `width` and `height` to the image's pixel size. Encode with
 `wrangler.jsonc` serves the Worker `screenchest-www` on `screenchest.com` as a
 custom domain. The domain must be an active zone on the same Cloudflare account
 as `CLOUDFLARE_ACCOUNT_ID`, and any existing A/AAAA/CNAME record on the apex
-has to go first, or the deploy fails.
+has to go first, or the deploy fails. `CLOUDFLARE_API_TOKEN` needs Workers
+Scripts edit on the account and Workers Routes and DNS edit on the zone.
+
+`.github/workflows/deploy-www.yml` checks and deploys on every push to `main`
+that touches `www/`, with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` from
+the repository's `production` environment. Pull requests touching `www/` run
+`check-www.yml` alone.
 
 `DOWNLOAD_URL` in `src/lib/links.ts` is still a placeholder.
