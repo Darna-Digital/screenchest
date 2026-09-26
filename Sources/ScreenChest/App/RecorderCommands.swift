@@ -4,6 +4,9 @@ struct RecorderCommands: Commands {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Commands {
+        CommandGroup(after: .appInfo) {
+            Button("Check for Updates…") { UpdateCheck.shared.checkByHand() }
+        }
         CommandGroup(replacing: .newItem) {
             Button("Show Recorder") { openWindow(id: RecorderView.windowID) }
                 .keyboardShortcut("1", modifiers: .command)

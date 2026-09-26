@@ -4,9 +4,15 @@ import PackageDescription
 let package = Package(
     name: "ScreenChest",
     platforms: [.macOS(.v26)],
+    dependencies: [
+        .package(url: "https://github.com/sparkle-project/Sparkle.git", from: "2.10.0"),
+    ],
     targets: [
         .executableTarget(
             name: "ScreenChest",
+            dependencies: [
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/ScreenChest",
             swiftSettings: [.swiftLanguageMode(.v5)],
             linkerSettings: [
@@ -17,6 +23,7 @@ let package = Package(
                 .linkedFramework("CoreMedia"),
                 .linkedFramework("VideoToolbox"),
                 .linkedFramework("Metal"),
+                .unsafeFlags(["-Xlinker", "-rpath", "-Xlinker", "@executable_path/../Frameworks"]),
             ]
         ),
         .testTarget(

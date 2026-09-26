@@ -20,5 +20,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         appearanceObservation = NSApp.observe(\.effectiveAppearance, options: [.initial, .new]) { app, _ in
             MainActor.assumeIsolated { DockIcon.follow(app.effectiveAppearance) }
         }
+        UpdateCheck.shared.start()
     }
 }

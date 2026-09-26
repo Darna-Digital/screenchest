@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Builds build/ScreenChest.app from scratch: release binary via SwiftPM, the app
-# icon compiled from Resources/ScreenChest.icon, Info.plist, code signature.
+# icon compiled from Resources/ScreenChest.icon, Info.plist stamped with VERSION,
+# the Sparkle framework, code signature.
 #
 #   scripts/build-app.sh                       # sign with "ScreenChest Dev" if present, else ad-hoc
 #   SIGN_IDENTITY="My Cert" scripts/build-app.sh
+#   SIGN_IDENTITY="Developer ID Application: …" scripts/build-app.sh   # notarizable (scripts/release.sh)
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
@@ -18,6 +20,7 @@ icon_fallback_dir="$project_dir/Resources/icons"
 icon_renderer="$project_dir/scripts/render-icon.swift"
 icon_build="$build_dir/icon"
 dev_identity="ScreenChest Dev"
+version="$(tr -d '[:space:]' < "$project_dir/VERSION")"
 
 resolve_sign_identity() {
   if [[ -n "${SIGN_IDENTITY:-}" ]]; then
@@ -124,17 +127,58 @@ assemble_bundle() {
     cp "$icon_build/Assets.car" "$contents/Resources/"
   fi
   printf 'APPL????' > "$contents/PkgInfo"
+  bundle_sparkle
+  stamp_info_plist
+}
+
+bundle_sparkle() {
+  mkdir -p "$contents/Frameworks"
+  ditto ".build/release/Sparkle.framework" "$contents/Frameworks/Sparkle.framework"
+  rm -rf "$contents/Frameworks/Sparkle.framework/Versions/B/XPCServices" \
+    "$contents/Frameworks/Sparkle.framework/XPCServices"
+}
+
+is_distribution_identity() {
+  [[ "$1" == "Developer ID Application:"* ]]
+}
+
+stamp_info_plist() {
+  /usr/libexec/PlistBuddy \
+    -c "Set :CFBundleShortVersionString $version" \
+    -c "Set :CFBundleVersion $version" \
+    "$contents/Info.plist"
+  if ! is_distribution_identity "$(resolve_sign_identity)"; then
+    /usr/libexec/PlistBuddy -c "Set :SUEnableAutomaticChecks false" "$contents/Info.plist"
+  fi
 }
 
 sign_bundle() {
-  local identity
+  local identity sparkle
   identity="$(resolve_sign_identity)"
+  sparkle="$contents/Frameworks/Sparkle.framework"
   echo "→ codesign ($identity)"
-  codesign --force --sign "$identity" "$app"
+  sign "$identity" "$sparkle/Versions/B/Autoupdate"
+  sign "$identity" "$sparkle/Versions/B/Updater.app"
+  sign "$identity" "$sparkle"
+  sign "$identity" "$app" --entitlements "$project_dir/Resources/ScreenChest.entitlements"
+  if [[ "$identity" != "-" ]] && codesign -dv "$app" 2>&1 | grep -q "^Signature=adhoc"; then
+    echo "✗ $app_name.app is ad-hoc signed though \"$identity\" was asked for." >&2
+    exit 1
+  fi
   if [[ "$identity" == "-" ]]; then
     echo "⚠ ad-hoc signed: the Screen Recording grant will not survive rebuilds."
     echo "  Run scripts/create-signing-identity.sh once to fix that."
   fi
+}
+
+sign() {
+  local identity="$1" target="$2"
+  shift 2
+  local distribution_flags=()
+  if is_distribution_identity "$identity"; then
+    distribution_flags=(--options runtime --timestamp)
+  fi
+  codesign --force --sign "$identity" ${distribution_flags[@]+"${distribution_flags[@]}"} "$@" "$target"
 }
 
 mkdir -p "$build_dir"
@@ -142,4 +186,4 @@ render_icon
 build_binary
 assemble_bundle
 sign_bundle
-echo "✓ built ${app#"$project_dir"/}"
+echo "✓ built ${app#"$project_dir"/} $version"

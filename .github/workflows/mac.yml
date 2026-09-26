@@ -1,0 +1,39 @@
+name: mac
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "www/**"
+      - "docs/**"
+      - "**/*.md"
+  pull_request:
+    paths-ignore:
+      - "www/**"
+      - "docs/**"
+      - "**/*.md"
+  workflow_call:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-mac-${{ github.ref }}-${{ github.event_name }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-26
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Test
+        run: swift test
+
+      - name: Build ScreenChest.app
+        run: scripts/build-app.sh
+
+      - name: Verify the bundle's signature seals everything in it
+        run: codesign --verify --deep --strict --verbose=2 build/ScreenChest.app

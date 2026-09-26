@@ -1,0 +1,49 @@
+name: Bug report
+description: Something in ScreenChest isn't working as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thanks for taking the time to report this. Please search existing issues first.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a recording of a single window with the camera on
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: screenchest-version
+    attributes:
+      label: ScreenChest version
+      description: ScreenChest → About ScreenChest, or the commit you built from
+      placeholder: 0.0.1
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: macOS 26.0
+    validations:
+      required: true
+  - type: input
+    id: mac-model
+    attributes:
+      label: Mac model and displays
+      description: Recording and rendering can depend on the chip and the displays attached.
+      placeholder: MacBook Pro M3, plus a 5K Studio Display
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots, recordings or anything else
+      description: Drag images, a screen recording or an exported clip in here.

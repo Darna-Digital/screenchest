@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 import { devtools } from "@tanstack/devtools-vite";
 
@@ -9,8 +10,14 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 const PORT = 41842;
 
+const APP_VERSION = readFileSync(
+  new URL("../VERSION", import.meta.url),
+  "utf8"
+).trim();
+
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  define: { __APP_VERSION__: JSON.stringify(APP_VERSION) },
   server: { port: PORT },
   preview: { port: PORT },
   plugins: [

@@ -6,6 +6,7 @@ on:
     paths:
       - "www/**"
       - ".github/workflows/deploy-www.yml"
+  workflow_call:
   workflow_dispatch:
 
 concurrency:

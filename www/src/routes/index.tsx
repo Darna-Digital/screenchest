@@ -248,8 +248,8 @@ function Hero() {
       </h1>
 
       <p className="max-w-2xl text-lg leading-normal text-pretty text-neutral-600 sm:text-[21px] lg:max-w-3xl lg:text-2xl lg:leading-[1.4] dark:text-neutral-400">
-        ScreenChest zooms in wherever you click, so viewers always see what
-        you're doing. A lightweight native Mac app with a built-in editor.
+        ScreenChest zooms in on your clicks, so viewers always see what you're
+        doing. A lightweight native Mac app with a built-in editor.
       </p>
 
       <a
@@ -291,7 +291,7 @@ function Home() {
           <ShowcaseCard
             description="ScreenChest adds zooms by following your clicks and cursor, so the important moments stand out. It gets you most of the way, and you finish the rest: drag, resize, or add zooms right on the timeline."
             icon={<Zoom className={SECTION_ICON} />}
-            title="Smart zooms you can still control"
+            title="Automatic zooms"
           >
             <SectionScreenshot
               label="The timeline's zoom row, with 2× zooms placed under each burst of clicks"
