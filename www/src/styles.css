@@ -1,0 +1,46 @@
+@import "tailwindcss";
+
+@theme {
+  /* The macOS system face: SF Pro on Apple platforms, with Display's optical
+     sizing picked up automatically by -apple-system at large sizes. */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", ui-sans-serif, system-ui,
+    "Helvetica Neue", sans-serif;
+  --spacing-header: 3.25rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: white;
+  color: var(--color-neutral-900);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* drop-shadow rather than box-shadow: the screenshot carries its own rounded
+   corners as transparency, and box-shadow would draw a rectangle behind them. */
+.screen-shadow {
+  filter: drop-shadow(0 40px 60px rgba(0, 0, 0, 0.08))
+    drop-shadow(0 12px 20px rgba(0, 0, 0, 0.05))
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.04));
+}
+
+@media (prefers-color-scheme: dark) {
+  body {
+    background-color: #111113;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  .screen-shadow {
+    filter: none;
+  }
+}
