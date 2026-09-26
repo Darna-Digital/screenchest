@@ -1,8 +1,8 @@
 import { Container } from "#/components/container";
-import { Apple } from "#/components/icons";
+import { Apple, GitHub } from "#/components/icons";
 import { Logo } from "#/components/logo";
 import { useScrolled } from "#/hooks/use-scrolled";
-import { DOWNLOAD_URL } from "#/lib/links";
+import { DOWNLOAD_URL, REPO_URL } from "#/lib/links";
 
 function TouchTarget() {
   return (
@@ -30,7 +30,17 @@ export function SiteHeader() {
         <a href="/">
           <Logo className="h-5 w-auto lg:h-6" />
         </a>
-        <a className={`ml-auto ${NAV_LINK}`} href={DOWNLOAD_URL}>
+        <a
+          className={`ml-auto ${NAV_LINK}`}
+          href={REPO_URL}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          <TouchTarget />
+          <GitHub className="size-4 lg:size-4.5" />
+          GitHub
+        </a>
+        <a className={NAV_LINK} href={DOWNLOAD_URL}>
           <TouchTarget />
           <Apple className="size-4 lg:size-4.5" />
           Download

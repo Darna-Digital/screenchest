@@ -24,7 +24,7 @@ import {
 import { cn } from "#/lib/cn";
 import { SiteFooter } from "#/components/site-footer";
 import { SiteHeader } from "#/components/site-header";
-import { DOWNLOAD_URL } from "#/lib/links";
+import { DOWNLOAD_URL, REPO_URL } from "#/lib/links";
 
 type ScreenshotSpec = {
   width: number;
@@ -261,7 +261,16 @@ function Hero() {
       </a>
 
       <p className="text-sm leading-relaxed text-pretty text-neutral-500 sm:text-[13px] lg:text-[15px]">
-        For Macs on macOS 26 or later.
+        For Apple silicon Macs, on macOS 26 or later. Free and{" "}
+        <a
+          className="underline decoration-neutral-300 underline-offset-2 transition-colors hover:text-neutral-900 dark:decoration-neutral-600 dark:hover:text-white"
+          href={REPO_URL}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
+          open source
+        </a>
+        .
       </p>
     </section>
   );
